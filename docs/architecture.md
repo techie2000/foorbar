@@ -33,22 +33,19 @@ Axiom is built as a modular monolith with clear boundaries between different dom
 
 ### Data Flow
 
-```
-Client Request
-    ↓
-API Gateway/Load Balancer
-    ↓
-Gin HTTP Handler
-    ↓
-Middleware (Auth, CORS, Rate Limit, Logging)
-    ↓
-Handler (Request Validation)
-    ↓
-Service Layer (Business Logic)
-    ↓
-Repository (Data Access)
-    ↓
-PostgreSQL Database
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4A90E2','primaryTextColor':'#000','primaryBorderColor':'#2E5C8A','lineColor':'#2E5C8A','secondaryColor':'#82B1FF','tertiaryColor':'#fff','fontSize':'14px'}}}%%
+flowchart TD
+    A[Client Request] --> B[API Gateway/Load Balancer]
+    B --> C[Gin HTTP Handler]
+    C --> D[Middleware<br/>Auth, CORS, Rate Limit, Logging]
+    D --> E[Handler<br/>Request Validation]
+    E --> F[Service Layer<br/>Business Logic]
+    F --> G[Repository<br/>Data Access]
+    G --> H[PostgreSQL Database]
+    
+    style A fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style H fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
 ```
 
 ### CQRS Pattern
@@ -69,11 +66,31 @@ The system separates read and write operations:
 
 ### Database Schema
 
-```
-countries (reference data)
-    ↓
-addresses → entities → accounts
-                    → ssis ← instruments ← currencies
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4A90E2','primaryTextColor':'#000','primaryBorderColor':'#2E5C8A','lineColor':'#2E5C8A','secondaryColor':'#82B1FF','tertiaryColor':'#fff','fontSize':'14px'}}}%%
+graph LR
+    countries[countries<br/>reference data]
+    currencies[currencies]
+    addresses[addresses]
+    entities[entities]
+    accounts[accounts]
+    instruments[instruments]
+    ssis[ssis]
+    
+    countries --> addresses
+    addresses --> entities
+    entities --> accounts
+    entities --> ssis
+    instruments --> ssis
+    currencies --> instruments
+    
+    style countries fill:#82B1FF,stroke:#2E5C8A,stroke-width:2px
+    style currencies fill:#82B1FF,stroke:#2E5C8A,stroke-width:2px
+    style addresses fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style entities fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style accounts fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style instruments fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style ssis fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
 ```
 
 ### Microservices Communication
@@ -102,14 +119,35 @@ While deployed as a monolith, internal services communicate through:
 
 ## Deployment Architecture
 
-```
-[Load Balancer]
-      ↓
-[API Servers (N instances)]
-      ↓
-[PostgreSQL Primary] ← [PostgreSQL Replica]
-      ↓
-[RabbitMQ Cluster]
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4A90E2','primaryTextColor':'#000','primaryBorderColor':'#2E5C8A','lineColor':'#2E5C8A','secondaryColor':'#82B1FF','tertiaryColor':'#fff','fontSize':'14px'}}}%%
+flowchart TD
+    LB[Load Balancer]
+    API1[API Server 1]
+    API2[API Server 2]
+    APIN[API Server N]
+    PG_PRIMARY[PostgreSQL Primary]
+    PG_REPLICA[PostgreSQL Replica]
+    RMQ[RabbitMQ Cluster]
+    
+    LB --> API1
+    LB --> API2
+    LB --> APIN
+    API1 --> PG_PRIMARY
+    API2 --> PG_PRIMARY
+    APIN --> PG_PRIMARY
+    PG_PRIMARY -.replication.-> PG_REPLICA
+    API1 --> RMQ
+    API2 --> RMQ
+    APIN --> RMQ
+    
+    style LB fill:#82B1FF,stroke:#2E5C8A,stroke-width:2px
+    style API1 fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style API2 fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style APIN fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style PG_PRIMARY fill:#2E5C8A,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style PG_REPLICA fill:#2E5C8A,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    style RMQ fill:#82B1FF,stroke:#2E5C8A,stroke-width:2px
 ```
 
 ## Future Considerations
