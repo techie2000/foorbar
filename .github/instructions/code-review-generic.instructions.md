@@ -6,13 +6,16 @@ excludeAgent: ["coding-agent"]
 
 # Generic Code Review Instructions
 
-Comprehensive code review guidelines for GitHub Copilot that can be adapted to any project. These instructions follow best practices from prompt engineering and provide a structured approach to code quality, security, testing, and architecture review.
+Comprehensive code review guidelines for GitHub Copilot that can be adapted to any project. These instructions follow
+best practices from prompt engineering and provide a structured approach to code quality, security, testing, and
+architecture review.
 
 ## Review Language
 
 When performing a code review, respond in **English** (or specify your preferred language).
 
-> **Customization Tip**: Change to your preferred language by replacing "English" with "Portuguese (Brazilian)", "Spanish", "French", etc.
+> **Customization Tip**: Change to your preferred language by replacing "English" with "Portuguese (Brazilian)",
+> "Spanish", "French", etc.
 
 ## Review Priorities
 
@@ -61,7 +64,8 @@ When performing a code review, check for:
 - Avoid magic numbers and strings (use constants)
 - Code should be self-documenting; comments only when necessary
 
-### Examples
+#### Clean Code Examples
+
 ```javascript
 // ❌ BAD: Poor naming and magic numbers
 function calc(x, y) {
@@ -88,7 +92,8 @@ function calculateDiscount(orderTotal, itemPrice) {
 - Fail fast: validate inputs early
 - Use appropriate error types/exceptions
 
-### Examples
+#### Error Handling Examples
+
 ```python
 # ❌ BAD: Silent failure and generic error
 def process_user(user_id):
@@ -264,8 +269,8 @@ PreparedStatement stmt = conn.prepareStatement(
 stmt.setString(1, email);
 ```
 
-**Reference:** OWASP SQL Injection Prevention Cheat Sheet
-```
+**Reference:**  
+[OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
 
 #### Important Issue
 ```markdown
@@ -290,7 +295,9 @@ test('should process full refund when order is cancelled', () => {
     expect(result.status).toBe('refunded');
 });
 ```
-```
+
+**Reference:**  
+[OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/XSS_Prevention_Cheat_Sheet.html)
 
 #### Suggestion
 ```markdown
@@ -318,7 +325,9 @@ if (!user || !user.isActive || !user.hasPermission('write')) {
 }
 // do something
 ```
-```
+
+**Reference:**  
+[OWASP CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CSRF_Prevention_Cheat_Sheet.html)
 
 ## Review Checklist
 
