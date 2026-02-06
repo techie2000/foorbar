@@ -5,11 +5,15 @@ tools: ['search/changes', 'search/codebase', 'edit/editFiles', 'vscode/extension
 ---
 # Create LLMs.txt File from Repository Structure
 
-Create a new `llms.txt` file from scratch in the root of the repository following the official llms.txt specification at https://llmstxt.org/. This file provides high-level guidance to large language models (LLMs) on where to find relevant content for understanding the repository's purpose and specifications.
+Create a new `llms.txt` file from scratch in the root of the repository following the official llms.txt specification
+at https://llmstxt.org/. This file provides high-level guidance to large language models (LLMs) on where to find
+relevant content for understanding the repository's purpose and specifications.
 
 ## Primary Directive
 
-Create a comprehensive `llms.txt` file that serves as an entry point for LLMs to understand and navigate the repository effectively. The file must comply with the llms.txt specification and be optimized for LLM consumption while remaining human-readable.
+Create a comprehensive `llms.txt` file that serves as an entry point for LLMs to understand and navigate the
+repository effectively. The file must comply with the llms.txt specification and be optimized for LLM consumption
+while remaining human-readable.
 
 ## Analysis and Planning Phase
 

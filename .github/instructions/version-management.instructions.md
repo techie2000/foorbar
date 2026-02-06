@@ -298,7 +298,7 @@ docker run -v ./data:/app/input ghcr.io/techie2000/csv2json:latest
 
 For alpha, beta, or release candidate versions:
 
-```
+```bash
 1.0.0-alpha.1
 1.0.0-beta.1
 1.0.0-rc.1

@@ -13,14 +13,16 @@ We do not need comments most of the time.
 
 ### ❌ AVOID These Comment Types
 
-**Obvious Comments**
+#### Obvious Comments
+
 ```javascript
 // Bad: States the obvious
 let counter = 0;  // Initialize counter to zero
 counter++;  // Increment counter by one
 ```
 
-**Redundant Comments**
+#### Redundant Comments
+
 ```javascript
 // Bad: Comment repeats the code
 function getUserName() {
@@ -28,7 +30,8 @@ function getUserName() {
 }
 ```
 
-**Outdated Comments**
+#### Outdated Comments
+
 ```javascript
 // Bad: Comment doesn't match the code
 // Calculate tax at 5% rate
@@ -37,14 +40,16 @@ const tax = price * 0.08;  // Actually 8%
 
 ### ✅ WRITE These Comment Types
 
-**Complex Business Logic**
+#### Complex Business Logic
+
 ```javascript
 // Good: Explains WHY this specific calculation
 // Apply progressive tax brackets: 10% up to 10k, 20% above
 const tax = calculateProgressiveTax(income, [0.10, 0.20], [10000]);
 ```
 
-**Non-obvious Algorithms**
+#### Non-obvious Algorithms
+
 ```javascript
 // Good: Explains the algorithm choice
 // Using Floyd-Warshall for all-pairs shortest paths
@@ -58,14 +63,16 @@ for (let k = 0; k < vertices; k++) {
 }
 ```
 
-**Regex Patterns**
+#### Regex Patterns
+
 ```javascript
 // Good: Explains what the regex matches
 // Match email format: username@domain.extension
 const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 ```
 
-**API Constraints or Gotchas**
+#### API Constraints or Gotchas
+
 ```javascript
 // Good: Explains external constraint
 // GitHub API rate limit: 5000 requests/hour for authenticated users
