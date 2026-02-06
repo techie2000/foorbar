@@ -2,6 +2,7 @@
 DROP TRIGGER IF EXISTS update_audit_logs_updated_at ON audit_logs;
 DROP TRIGGER IF EXISTS update_ssis_updated_at ON ssis;
 DROP TRIGGER IF EXISTS update_accounts_updated_at ON accounts;
+DROP TRIGGER IF EXISTS update_instrument_codes_updated_at ON instrument_codes;
 DROP TRIGGER IF EXISTS update_instruments_updated_at ON instruments;
 DROP TRIGGER IF EXISTS update_entity_addresses_updated_at ON entity_addresses;
 DROP TRIGGER IF EXISTS update_entities_updated_at ON entities;
@@ -16,6 +17,7 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS ssis;
 DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS instrument_codes;
 DROP TABLE IF EXISTS instruments;
 DROP TABLE IF EXISTS entity_addresses;
 DROP TABLE IF EXISTS entities;

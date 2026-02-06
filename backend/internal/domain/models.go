@@ -137,18 +137,59 @@ const (
 // Instrument represents a financial instrument
 type Instrument struct {
 	BaseModel
-	ISIN       string          `gorm:"uniqueIndex" json:"isin,omitempty"` // ISIN is optional - not all instruments have one
-	Name       string          `gorm:"not null" json:"name" validate:"required"`
-	Type       InstrumentType  `gorm:"type:varchar(50)" json:"type"`
-	CurrencyID *uuid.UUID      `gorm:"type:uuid" json:"currency_id"`
-	Currency   *Currency       `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
-	Exchange   string          `json:"exchange"`
-	Active     bool            `gorm:"default:true" json:"active"`
+	Name              string             `gorm:"not null" json:"name" validate:"required"`
+	Type              InstrumentType     `gorm:"type:varchar(50)" json:"type"`
+	IssueCurrencyID   *uuid.UUID         `gorm:"type:uuid;column:issue_currency_id" json:"issue_currency_id"`
+	IssueCurrency     *Currency          `gorm:"foreignKey:IssueCurrencyID" json:"issue_currency,omitempty"`
+	PrimaryExchange   string             `gorm:"column:primary_exchange" json:"primary_exchange"`
+	Codes             []InstrumentCode   `gorm:"foreignKey:InstrumentID" json:"codes,omitempty"`
+	Active            bool               `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
 func (Instrument) TableName() string {
 	return "instruments"
+}
+
+// IdentifierLevel represents the level of instrument identifier
+type IdentifierLevel string
+
+const (
+	IdentifierLevelInternational IdentifierLevel = "INTERNATIONAL" // ISIN, FIGI
+	IdentifierLevelRegional      IdentifierLevel = "REGIONAL"      // CUSIP, WKN
+	IdentifierLevelLocal         IdentifierLevel = "LOCAL"         // Exchange-specific codes
+)
+
+// CodeType represents the type of instrument code
+type CodeType string
+
+const (
+	CodeTypeISIN      CodeType = "ISIN"
+	CodeTypeFIGI      CodeType = "FIGI"
+	CodeTypeCUSIP     CodeType = "CUSIP"
+	CodeTypeWKN       CodeType = "WKN"
+	CodeTypeSEDOL     CodeType = "SEDOL"
+	CodeTypeRIC       CodeType = "RIC"
+	CodeTypeTicker    CodeType = "TICKER"
+	CodeTypeBloomberg CodeType = "BLOOMBERG"
+)
+
+// InstrumentCode represents an identifier code for an instrument
+type InstrumentCode struct {
+	BaseModel
+	InstrumentID          uuid.UUID       `gorm:"type:uuid;not null" json:"instrument_id"`
+	Instrument            *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
+	CodeType              CodeType        `gorm:"type:varchar(50);not null" json:"code_type"`
+	CodeValue             string          `gorm:"size:100;not null" json:"code_value"`
+	IdentifierLevel       IdentifierLevel `gorm:"type:varchar(50)" json:"identifier_level,omitempty"`
+	MarketIdentifierCode  string          `gorm:"size:10" json:"market_identifier_code,omitempty"` // MIC code (e.g., XNAS, XFRA)
+	Region                string          `gorm:"size:50" json:"region,omitempty"`                 // For regional codes (e.g., US, DE)
+	IsPrimary             bool            `gorm:"default:false" json:"is_primary"`
+}
+
+// TableName overrides the table name
+func (InstrumentCode) TableName() string {
+	return "instrument_codes"
 }
 
 // AccountType represents the type of account
@@ -164,15 +205,15 @@ const (
 // Account represents a financial account
 type Account struct {
 	BaseModel
-	AccountNumber string       `gorm:"uniqueIndex;not null" json:"account_number" validate:"required"`
-	EntityID      *uuid.UUID   `gorm:"type:uuid" json:"entity_id"`
-	Entity        *Entity      `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
-	CurrencyID    *uuid.UUID   `gorm:"type:uuid" json:"currency_id"`
-	Currency      *Currency    `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
-	Type          AccountType  `gorm:"type:varchar(50)" json:"type"`
-	Balance       float64      `gorm:"type:decimal(19,4);default:0" json:"balance"`
-	OpenedAt      time.Time    `json:"opened_at"`
-	Active        bool         `gorm:"default:true" json:"active"`
+	AccountNumber      string       `gorm:"uniqueIndex;not null" json:"account_number" validate:"required"`
+	EntityID           *uuid.UUID   `gorm:"type:uuid" json:"entity_id"`
+	Entity             *Entity      `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	AccountCurrencyID  *uuid.UUID   `gorm:"type:uuid;column:account_currency_id" json:"account_currency_id"`
+	AccountCurrency    *Currency    `gorm:"foreignKey:AccountCurrencyID" json:"account_currency,omitempty"`
+	Type               AccountType  `gorm:"type:varchar(50)" json:"type"`
+	Balance            float64      `gorm:"type:decimal(19,4);default:0" json:"balance"`
+	OpenedAt           time.Time    `json:"opened_at"`
+	Active             bool         `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
@@ -193,22 +234,22 @@ const (
 // SSI represents Standard Settlement Instructions
 type SSI struct {
 	BaseModel
-	EntityID              *uuid.UUID      `gorm:"type:uuid" json:"entity_id"`
-	Entity                *Entity         `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
-	CurrencyID            *uuid.UUID      `gorm:"type:uuid" json:"currency_id"`
-	Currency              *Currency       `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
-	InstrumentID          *uuid.UUID      `gorm:"type:uuid" json:"instrument_id"`
-	Instrument            *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
-	BeneficiaryName       string          `gorm:"not null" json:"beneficiary_name" validate:"required"`
-	BeneficiaryAccount    string          `gorm:"not null" json:"beneficiary_account" validate:"required"`
-	BeneficiaryBank       string          `gorm:"not null" json:"beneficiary_bank" validate:"required"`
-	BeneficiaryBankBIC    string          `json:"beneficiary_bank_bic"`
-	IntermediaryBank      string          `json:"intermediary_bank"`
-	IntermediaryBankBIC   string          `json:"intermediary_bank_bic"`
-	SettlementType        SettlementType  `gorm:"type:varchar(50)" json:"settlement_type"`
-	ValidFrom             time.Time       `json:"valid_from"`
-	ValidTo               *time.Time      `json:"valid_to"`
-	Active                bool            `gorm:"default:true" json:"active"`
+	EntityID               *uuid.UUID      `gorm:"type:uuid" json:"entity_id"`
+	Entity                 *Entity         `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	SettlementCurrencyID   *uuid.UUID      `gorm:"type:uuid;column:settlement_currency_id" json:"settlement_currency_id"`
+	SettlementCurrency     *Currency       `gorm:"foreignKey:SettlementCurrencyID" json:"settlement_currency,omitempty"`
+	InstrumentID           *uuid.UUID      `gorm:"type:uuid" json:"instrument_id"`
+	Instrument             *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
+	BeneficiaryName        string          `gorm:"not null" json:"beneficiary_name" validate:"required"`
+	BeneficiaryAccount     string          `gorm:"not null" json:"beneficiary_account" validate:"required"`
+	BeneficiaryBank        string          `gorm:"not null" json:"beneficiary_bank" validate:"required"`
+	BeneficiaryBankBIC     string          `json:"beneficiary_bank_bic"`
+	IntermediaryBank       string          `json:"intermediary_bank"`
+	IntermediaryBankBIC    string          `json:"intermediary_bank_bic"`
+	SettlementType         SettlementType  `gorm:"type:varchar(50)" json:"settlement_type"`
+	ValidFrom              time.Time       `json:"valid_from"`
+	ValidTo                *time.Time      `json:"valid_to"`
+	Active                 bool            `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
