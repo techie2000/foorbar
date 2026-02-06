@@ -55,7 +55,7 @@ public class FileDataService {
         CsvSchema schema = CsvSchema.emptySchema().withHeader();
         return csvMapper.readerFor(clazz)
             .with(schema)
-            .readValues(new File(filePath))
+            .<T>readValues(new File(filePath))
             .readAll();
     }
     
