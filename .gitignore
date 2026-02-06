@@ -1,0 +1,60 @@
+# Build artifacts
+/backend/bin/
+/backend/tmp/
+/backend/*.exe
+/backend/*.dll
+/backend/*.so
+/backend/*.dylib
+/backend/*.test
+/backend/*.out
+
+# Go workspace file
+go.work
+
+# Frontend
+/frontend/node_modules/
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+/frontend/.env*.local
+/frontend/.vercel
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Logs
+*.log
+logs/
+/backend/logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+/tmp/
+*.tmp
+
+# Testing
+/backend/coverage.out
+/backend/coverage.html
+/frontend/coverage/
+
+# Documentation
+/docs/*.pdf

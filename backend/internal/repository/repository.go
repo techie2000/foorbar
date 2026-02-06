@@ -1,0 +1,300 @@
+package repository
+
+import (
+	"github.com/techie2000/axiom/internal/domain"
+	"gorm.io/gorm"
+)
+
+// Repositories holds all repository interfaces
+type Repositories struct {
+	Country    CountryRepository
+	Currency   CurrencyRepository
+	Entity     EntityRepository
+	Instrument InstrumentRepository
+	Account    AccountRepository
+	SSI        SSIRepository
+}
+
+// NewRepositories creates a new repositories instance
+func NewRepositories(db *gorm.DB) *Repositories {
+	return &Repositories{
+		Country:    NewCountryRepository(db),
+		Currency:   NewCurrencyRepository(db),
+		Entity:     NewEntityRepository(db),
+		Instrument: NewInstrumentRepository(db),
+		Account:    NewAccountRepository(db),
+		SSI:        NewSSIRepository(db),
+	}
+}
+
+// CountryRepository interface
+type CountryRepository interface {
+	Create(country *domain.Country) error
+	FindByID(id string) (*domain.Country, error)
+	FindAll(limit, offset int) ([]*domain.Country, error)
+	Update(country *domain.Country) error
+	Delete(id string) error
+}
+
+type countryRepository struct {
+	db *gorm.DB
+}
+
+func NewCountryRepository(db *gorm.DB) CountryRepository {
+	return &countryRepository{db: db}
+}
+
+func (r *countryRepository) Create(country *domain.Country) error {
+	return r.db.Create(country).Error
+}
+
+func (r *countryRepository) FindByID(id string) (*domain.Country, error) {
+	var country domain.Country
+	if err := r.db.First(&country, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &country, nil
+}
+
+func (r *countryRepository) FindAll(limit, offset int) ([]*domain.Country, error) {
+	var countries []*domain.Country
+	if err := r.db.Limit(limit).Offset(offset).Find(&countries).Error; err != nil {
+		return nil, err
+	}
+	return countries, nil
+}
+
+func (r *countryRepository) Update(country *domain.Country) error {
+	return r.db.Save(country).Error
+}
+
+func (r *countryRepository) Delete(id string) error {
+	return r.db.Delete(&domain.Country{}, "id = ?", id).Error
+}
+
+// CurrencyRepository interface
+type CurrencyRepository interface {
+	Create(currency *domain.Currency) error
+	FindByID(id string) (*domain.Currency, error)
+	FindAll(limit, offset int) ([]*domain.Currency, error)
+	Update(currency *domain.Currency) error
+	Delete(id string) error
+}
+
+type currencyRepository struct {
+	db *gorm.DB
+}
+
+func NewCurrencyRepository(db *gorm.DB) CurrencyRepository {
+	return &currencyRepository{db: db}
+}
+
+func (r *currencyRepository) Create(currency *domain.Currency) error {
+	return r.db.Create(currency).Error
+}
+
+func (r *currencyRepository) FindByID(id string) (*domain.Currency, error) {
+	var currency domain.Currency
+	if err := r.db.First(&currency, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &currency, nil
+}
+
+func (r *currencyRepository) FindAll(limit, offset int) ([]*domain.Currency, error) {
+	var currencies []*domain.Currency
+	if err := r.db.Limit(limit).Offset(offset).Find(&currencies).Error; err != nil {
+		return nil, err
+	}
+	return currencies, nil
+}
+
+func (r *currencyRepository) Update(currency *domain.Currency) error {
+	return r.db.Save(currency).Error
+}
+
+func (r *currencyRepository) Delete(id string) error {
+	return r.db.Delete(&domain.Currency{}, "id = ?", id).Error
+}
+
+// Additional repository implementations for Entity, Instrument, Account, SSI
+// (Following same pattern as above)
+
+type EntityRepository interface {
+	Create(entity *domain.Entity) error
+	FindByID(id string) (*domain.Entity, error)
+	FindAll(limit, offset int) ([]*domain.Entity, error)
+	Update(entity *domain.Entity) error
+	Delete(id string) error
+}
+
+type entityRepository struct {
+	db *gorm.DB
+}
+
+func NewEntityRepository(db *gorm.DB) EntityRepository {
+	return &entityRepository{db: db}
+}
+
+func (r *entityRepository) Create(entity *domain.Entity) error {
+	return r.db.Create(entity).Error
+}
+
+func (r *entityRepository) FindByID(id string) (*domain.Entity, error) {
+	var entity domain.Entity
+	if err := r.db.Preload("Address").Preload("Address.Country").First(&entity, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &entity, nil
+}
+
+func (r *entityRepository) FindAll(limit, offset int) ([]*domain.Entity, error) {
+	var entities []*domain.Entity
+	if err := r.db.Preload("Address").Preload("Address.Country").Limit(limit).Offset(offset).Find(&entities).Error; err != nil {
+		return nil, err
+	}
+	return entities, nil
+}
+
+func (r *entityRepository) Update(entity *domain.Entity) error {
+	return r.db.Save(entity).Error
+}
+
+func (r *entityRepository) Delete(id string) error {
+	return r.db.Delete(&domain.Entity{}, "id = ?", id).Error
+}
+
+// InstrumentRepository interface
+type InstrumentRepository interface {
+	Create(instrument *domain.Instrument) error
+	FindByID(id string) (*domain.Instrument, error)
+	FindAll(limit, offset int) ([]*domain.Instrument, error)
+	Update(instrument *domain.Instrument) error
+	Delete(id string) error
+}
+
+type instrumentRepository struct {
+	db *gorm.DB
+}
+
+func NewInstrumentRepository(db *gorm.DB) InstrumentRepository {
+	return &instrumentRepository{db: db}
+}
+
+func (r *instrumentRepository) Create(instrument *domain.Instrument) error {
+	return r.db.Create(instrument).Error
+}
+
+func (r *instrumentRepository) FindByID(id string) (*domain.Instrument, error) {
+	var instrument domain.Instrument
+	if err := r.db.Preload("Currency").First(&instrument, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &instrument, nil
+}
+
+func (r *instrumentRepository) FindAll(limit, offset int) ([]*domain.Instrument, error) {
+	var instruments []*domain.Instrument
+	if err := r.db.Preload("Currency").Limit(limit).Offset(offset).Find(&instruments).Error; err != nil {
+		return nil, err
+	}
+	return instruments, nil
+}
+
+func (r *instrumentRepository) Update(instrument *domain.Instrument) error {
+	return r.db.Save(instrument).Error
+}
+
+func (r *instrumentRepository) Delete(id string) error {
+	return r.db.Delete(&domain.Instrument{}, "id = ?", id).Error
+}
+
+// AccountRepository interface
+type AccountRepository interface {
+	Create(account *domain.Account) error
+	FindByID(id string) (*domain.Account, error)
+	FindAll(limit, offset int) ([]*domain.Account, error)
+	Update(account *domain.Account) error
+	Delete(id string) error
+}
+
+type accountRepository struct {
+	db *gorm.DB
+}
+
+func NewAccountRepository(db *gorm.DB) AccountRepository {
+	return &accountRepository{db: db}
+}
+
+func (r *accountRepository) Create(account *domain.Account) error {
+	return r.db.Create(account).Error
+}
+
+func (r *accountRepository) FindByID(id string) (*domain.Account, error) {
+	var account domain.Account
+	if err := r.db.Preload("Entity").Preload("Currency").First(&account, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &account, nil
+}
+
+func (r *accountRepository) FindAll(limit, offset int) ([]*domain.Account, error) {
+	var accounts []*domain.Account
+	if err := r.db.Preload("Entity").Preload("Currency").Limit(limit).Offset(offset).Find(&accounts).Error; err != nil {
+		return nil, err
+	}
+	return accounts, nil
+}
+
+func (r *accountRepository) Update(account *domain.Account) error {
+	return r.db.Save(account).Error
+}
+
+func (r *accountRepository) Delete(id string) error {
+	return r.db.Delete(&domain.Account{}, "id = ?", id).Error
+}
+
+// SSIRepository interface
+type SSIRepository interface {
+	Create(ssi *domain.SSI) error
+	FindByID(id string) (*domain.SSI, error)
+	FindAll(limit, offset int) ([]*domain.SSI, error)
+	Update(ssi *domain.SSI) error
+	Delete(id string) error
+}
+
+type ssiRepository struct {
+	db *gorm.DB
+}
+
+func NewSSIRepository(db *gorm.DB) SSIRepository {
+	return &ssiRepository{db: db}
+}
+
+func (r *ssiRepository) Create(ssi *domain.SSI) error {
+	return r.db.Create(ssi).Error
+}
+
+func (r *ssiRepository) FindByID(id string) (*domain.SSI, error) {
+	var ssi domain.SSI
+	if err := r.db.Preload("Entity").Preload("Currency").Preload("Instrument").First(&ssi, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &ssi, nil
+}
+
+func (r *ssiRepository) FindAll(limit, offset int) ([]*domain.SSI, error) {
+	var ssis []*domain.SSI
+	if err := r.db.Preload("Entity").Preload("Currency").Preload("Instrument").Limit(limit).Offset(offset).Find(&ssis).Error; err != nil {
+		return nil, err
+	}
+	return ssis, nil
+}
+
+func (r *ssiRepository) Update(ssi *domain.SSI) error {
+	return r.db.Save(ssi).Error
+}
+
+func (r *ssiRepository) Delete(id string) error {
+	return r.db.Delete(&domain.SSI{}, "id = ?", id).Error
+}
