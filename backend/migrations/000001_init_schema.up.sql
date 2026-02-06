@@ -133,7 +133,12 @@ CREATE TABLE IF NOT EXISTS instrument_codes (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP,
-    UNIQUE(instrument_id, code_type, code_value, market_identifier_code)
+    UNIQUE(instrument_id, code_type, code_value, market_identifier_code),
+    CONSTRAINT check_mic_only_for_local CHECK (
+        (identifier_level = 'LOCAL' AND market_identifier_code IS NOT NULL) OR
+        (identifier_level != 'LOCAL' AND market_identifier_code IS NULL) OR
+        (identifier_level IS NULL AND market_identifier_code IS NULL)
+    )
 );
 
 CREATE INDEX idx_instrument_codes_instrument_id ON instrument_codes(instrument_id);
