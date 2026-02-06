@@ -45,15 +45,34 @@ func (Currency) TableName() string {
 	return "currencies"
 }
 
-// Address represents a physical address
+// Address represents a physical address (ISO20022 compliant)
 type Address struct {
 	BaseModel
-	Street     string     `json:"street"`
-	City       string     `json:"city"`
-	State      string     `json:"state"`
-	PostalCode string     `json:"postal_code"`
-	CountryID  *uuid.UUID `gorm:"type:uuid" json:"country_id"`
-	Country    *Country   `gorm:"foreignKey:CountryID" json:"country,omitempty"`
+	// Structured address fields (ISO20022)
+	AddressType        string     `gorm:"size:50" json:"address_type,omitempty"`         // Type of address (ADDR, PBOX, HOME, BIZZ)
+	Department         string     `gorm:"size:70" json:"department,omitempty"`           // Department
+	SubDepartment      string     `gorm:"size:70" json:"sub_department,omitempty"`       // Sub-department
+	StreetName         string     `gorm:"size:70" json:"street_name,omitempty"`          // Street name
+	BuildingNumber     string     `gorm:"size:16" json:"building_number,omitempty"`      // Building number
+	BuildingName       string     `gorm:"size:35" json:"building_name,omitempty"`        // Building name
+	Floor              string     `gorm:"size:70" json:"floor,omitempty"`                // Floor
+	PostBox            string     `gorm:"size:16" json:"post_box,omitempty"`             // Post office box number
+	Room               string     `gorm:"size:70" json:"room,omitempty"`                 // Room
+	PostalCode         string     `gorm:"size:16" json:"postal_code,omitempty"`          // Postal code/ZIP code
+	TownName           string     `gorm:"size:35" json:"town_name,omitempty"`            // Town/city name
+	TownLocationName   string     `gorm:"size:35" json:"town_location_name,omitempty"`   // Town location name
+	DistrictName       string     `gorm:"size:35" json:"district_name,omitempty"`        // District name
+	CountrySubDivision string     `gorm:"size:35" json:"country_sub_division,omitempty"` // State/province/region
+	CountryID          *uuid.UUID `gorm:"type:uuid" json:"country_id,omitempty"`
+	Country            *Country   `gorm:"foreignKey:CountryID" json:"country,omitempty"`
+	// Unstructured address lines (ISO20022 allows up to 7 lines)
+	AddressLine1 string `gorm:"size:70" json:"address_line_1,omitempty"`
+	AddressLine2 string `gorm:"size:70" json:"address_line_2,omitempty"`
+	AddressLine3 string `gorm:"size:70" json:"address_line_3,omitempty"`
+	AddressLine4 string `gorm:"size:70" json:"address_line_4,omitempty"`
+	AddressLine5 string `gorm:"size:70" json:"address_line_5,omitempty"`
+	AddressLine6 string `gorm:"size:70" json:"address_line_6,omitempty"`
+	AddressLine7 string `gorm:"size:70" json:"address_line_7,omitempty"`
 }
 
 // TableName overrides the table name

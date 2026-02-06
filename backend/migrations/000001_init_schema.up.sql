@@ -33,20 +33,41 @@ CREATE TABLE IF NOT EXISTS currencies (
 CREATE INDEX idx_currencies_code ON currencies(code);
 CREATE INDEX idx_currencies_deleted_at ON currencies(deleted_at);
 
--- Create addresses table
+-- Create addresses table (ISO20022 compliant)
 CREATE TABLE IF NOT EXISTS addresses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    street VARCHAR(255),
-    city VARCHAR(255),
-    state VARCHAR(255),
-    postal_code VARCHAR(50),
-    country_id UUID REFERENCES countries(id),
+    -- Structured address fields (ISO20022)
+    address_type VARCHAR(50),                -- Type of address (e.g., ADDR, PBOX, HOME, BIZZ)
+    department VARCHAR(70),                  -- Department
+    sub_department VARCHAR(70),              -- Sub-department
+    street_name VARCHAR(70),                 -- Street name
+    building_number VARCHAR(16),             -- Building number
+    building_name VARCHAR(35),               -- Building name
+    floor VARCHAR(70),                       -- Floor
+    post_box VARCHAR(16),                    -- Post office box number
+    room VARCHAR(70),                        -- Room
+    postal_code VARCHAR(16),                 -- Postal code/ZIP code
+    town_name VARCHAR(35),                   -- Town/city name
+    town_location_name VARCHAR(35),          -- Town location name
+    district_name VARCHAR(35),               -- District name
+    country_sub_division VARCHAR(35),        -- State/province/region
+    country_id UUID REFERENCES countries(id), -- Country reference
+    -- Unstructured address lines (ISO20022 allows up to 7 lines)
+    address_line_1 VARCHAR(70),
+    address_line_2 VARCHAR(70),
+    address_line_3 VARCHAR(70),
+    address_line_4 VARCHAR(70),
+    address_line_5 VARCHAR(70),
+    address_line_6 VARCHAR(70),
+    address_line_7 VARCHAR(70),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP
 );
 
 CREATE INDEX idx_addresses_country_id ON addresses(country_id);
+CREATE INDEX idx_addresses_postal_code ON addresses(postal_code);
+CREATE INDEX idx_addresses_town_name ON addresses(town_name);
 CREATE INDEX idx_addresses_deleted_at ON addresses(deleted_at);
 
 -- Create entities table
