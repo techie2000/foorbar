@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: financial-services
+  
+  datasource:
+    url: jdbc:h2:mem:financialdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8080
+
+# Gateway configuration
+gateway:
+  routes:
+    - id: domain-data-service
+      uri: lb://domain-data-service
+      predicates:
+        - Path=/api/domain/**
+    - id: data-acquisition-service
+      uri: lb://data-acquisition-service
+      predicates:
+        - Path=/api/data/**
+    - id: notification-service
+      uri: lb://notification-service
+      predicates:
+        - Path=/api/notifications/**
+
+logging:
+  level:
+    com.foorbar: DEBUG
+    org.springframework: INFO
