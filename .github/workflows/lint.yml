@@ -41,8 +41,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run hadolint
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
-          failure-threshold: warning
+      - name: Lint Dockerfiles
+        run: |
+          docker run --rm -i hadolint/hadolint < ./docker/Dockerfile.backend
+          docker run --rm -i hadolint/hadolint < ./docker/Dockerfile.frontend
