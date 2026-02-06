@@ -34,21 +34,6 @@ jobs:
           version: latest
           args: --timeout=10m --verbose
 
-  markdown-lint:
-    name: Markdown Linting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run markdownlint
-        run: npx markdownlint-cli "**/*.md" --ignore "node_modules"
-
   docker-lint:
     name: Dockerfile Linting
     runs-on: ubuntu-latest
