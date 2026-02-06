@@ -1,5 +1,6 @@
-package com.foorbar.financialservices.gateway;
+package com.foorbar.financialservices.api.controller;
 
+import com.foorbar.financialservices.gateway.ServiceRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
