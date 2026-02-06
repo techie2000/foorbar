@@ -129,7 +129,6 @@ CREATE TABLE IF NOT EXISTS instrument_codes (
     identifier_level VARCHAR(50),  -- 'INTERNATIONAL', 'REGIONAL', 'LOCAL'
     market_identifier_code VARCHAR(10),  -- MIC code for local identifiers (e.g., 'XNAS', 'XFRA')
     region VARCHAR(50),  -- For regional identifiers (e.g., 'US', 'DE')
-    is_primary BOOLEAN DEFAULT false,  -- Primary identifier for this level
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP,
@@ -138,6 +137,11 @@ CREATE TABLE IF NOT EXISTS instrument_codes (
         (identifier_level = 'LOCAL' AND market_identifier_code IS NOT NULL) OR
         (identifier_level != 'LOCAL' AND market_identifier_code IS NULL) OR
         (identifier_level IS NULL AND market_identifier_code IS NULL)
+    ),
+    CONSTRAINT check_region_only_for_regional CHECK (
+        (identifier_level = 'REGIONAL' AND region IS NOT NULL) OR
+        (identifier_level != 'REGIONAL' AND region IS NULL) OR
+        (identifier_level IS NULL AND region IS NULL)
     )
 );
 

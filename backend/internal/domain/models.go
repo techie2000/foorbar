@@ -184,7 +184,6 @@ type InstrumentCode struct {
 	IdentifierLevel       IdentifierLevel `gorm:"type:varchar(50)" json:"identifier_level,omitempty"`
 	MarketIdentifierCode  string          `gorm:"size:10" json:"market_identifier_code,omitempty"` // MIC code (e.g., XNAS, XFRA)
 	Region                string          `gorm:"size:50" json:"region,omitempty"`                 // For regional codes (e.g., US, DE)
-	IsPrimary             bool            `gorm:"default:false" json:"is_primary"`
 }
 
 // TableName overrides the table name
