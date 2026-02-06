@@ -76,7 +76,6 @@ CREATE TABLE IF NOT EXISTS entities (
     name VARCHAR(255) NOT NULL,
     registration_number VARCHAR(255) UNIQUE,
     type VARCHAR(50),
-    address_id UUID REFERENCES addresses(id),
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -87,10 +86,27 @@ CREATE INDEX idx_entities_registration_number ON entities(registration_number);
 CREATE INDEX idx_entities_type ON entities(type);
 CREATE INDEX idx_entities_deleted_at ON entities(deleted_at);
 
+-- Create entity_addresses junction table (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS entity_addresses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    address_id UUID NOT NULL REFERENCES addresses(id) ON DELETE CASCADE,
+    address_type VARCHAR(50),  -- e.g., 'REGISTERED', 'TRADING', 'BILLING', 'CORRESPONDENCE'
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP,
+    UNIQUE(entity_id, address_id)
+);
+
+CREATE INDEX idx_entity_addresses_entity_id ON entity_addresses(entity_id);
+CREATE INDEX idx_entity_addresses_address_id ON entity_addresses(address_id);
+CREATE INDEX idx_entity_addresses_deleted_at ON entity_addresses(deleted_at);
+
 -- Create instruments table
 CREATE TABLE IF NOT EXISTS instruments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    isin VARCHAR(12) NOT NULL UNIQUE,
+    isin VARCHAR(12) UNIQUE,  -- ISIN is optional as not all instruments have one
     name VARCHAR(255) NOT NULL,
     type VARCHAR(50),
     currency_id UUID REFERENCES currencies(id),
@@ -101,7 +117,7 @@ CREATE TABLE IF NOT EXISTS instruments (
     deleted_at TIMESTAMP
 );
 
-CREATE INDEX idx_instruments_isin ON instruments(isin);
+CREATE INDEX idx_instruments_isin ON instruments(isin) WHERE isin IS NOT NULL;
 CREATE INDEX idx_instruments_type ON instruments(type);
 CREATE INDEX idx_instruments_currency_id ON instruments(currency_id);
 CREATE INDEX idx_instruments_deleted_at ON instruments(deleted_at);
@@ -192,6 +208,9 @@ CREATE TRIGGER update_addresses_updated_at BEFORE UPDATE ON addresses
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_entities_updated_at BEFORE UPDATE ON entities
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_entity_addresses_updated_at BEFORE UPDATE ON entity_addresses
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_instruments_updated_at BEFORE UPDATE ON instruments

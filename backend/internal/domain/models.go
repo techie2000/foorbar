@@ -94,17 +94,32 @@ const (
 // Entity represents a business entity (company, individual, etc.)
 type Entity struct {
 	BaseModel
-	Name               string      `gorm:"not null" json:"name" validate:"required"`
-	RegistrationNumber string      `gorm:"uniqueIndex" json:"registration_number"`
-	Type               EntityType  `gorm:"type:varchar(50)" json:"type"`
-	AddressID          *uuid.UUID  `gorm:"type:uuid" json:"address_id"`
-	Address            *Address    `gorm:"foreignKey:AddressID" json:"address,omitempty"`
-	Active             bool        `gorm:"default:true" json:"active"`
+	Name               string           `gorm:"not null" json:"name" validate:"required"`
+	RegistrationNumber string           `gorm:"uniqueIndex" json:"registration_number"`
+	Type               EntityType       `gorm:"type:varchar(50)" json:"type"`
+	Addresses          []EntityAddress  `gorm:"foreignKey:EntityID" json:"addresses,omitempty"`
+	Active             bool             `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
 func (Entity) TableName() string {
 	return "entities"
+}
+
+// EntityAddress represents the many-to-many relationship between entities and addresses
+type EntityAddress struct {
+	BaseModel
+	EntityID    uuid.UUID  `gorm:"type:uuid;not null" json:"entity_id"`
+	Entity      *Entity    `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	AddressID   uuid.UUID  `gorm:"type:uuid;not null" json:"address_id"`
+	Address     *Address   `gorm:"foreignKey:AddressID" json:"address,omitempty"`
+	AddressType string     `gorm:"size:50" json:"address_type,omitempty"` // e.g., 'REGISTERED', 'TRADING', 'BILLING', 'CORRESPONDENCE'
+	IsPrimary   bool       `gorm:"default:false" json:"is_primary"`
+}
+
+// TableName overrides the table name
+func (EntityAddress) TableName() string {
+	return "entity_addresses"
 }
 
 // InstrumentType represents the type of financial instrument
@@ -122,7 +137,7 @@ const (
 // Instrument represents a financial instrument
 type Instrument struct {
 	BaseModel
-	ISIN       string          `gorm:"uniqueIndex;not null" json:"isin" validate:"required"`
+	ISIN       string          `gorm:"uniqueIndex" json:"isin,omitempty"` // ISIN is optional - not all instruments have one
 	Name       string          `gorm:"not null" json:"name" validate:"required"`
 	Type       InstrumentType  `gorm:"type:varchar(50)" json:"type"`
 	CurrencyID *uuid.UUID      `gorm:"type:uuid" json:"currency_id"`
