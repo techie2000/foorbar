@@ -1,0 +1,199 @@
+package domain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+// BaseModel contains common fields for all models
+type BaseModel struct {
+	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// Country represents a country entity
+type Country struct {
+	BaseModel
+	Code       string `gorm:"uniqueIndex;size:2;not null" json:"code" validate:"required,len=2"`
+	Name       string `gorm:"not null" json:"name" validate:"required"`
+	Alpha3Code string `gorm:"size:3" json:"alpha3_code" validate:"len=3"`
+	Region     string `json:"region"`
+	Active     bool   `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (Country) TableName() string {
+	return "countries"
+}
+
+// Currency represents a currency entity
+type Currency struct {
+	BaseModel
+	Code          string `gorm:"uniqueIndex;size:3;not null" json:"code" validate:"required,len=3"`
+	Name          string `gorm:"not null" json:"name" validate:"required"`
+	Symbol        string `json:"symbol"`
+	DecimalPlaces int    `gorm:"default:2" json:"decimal_places"`
+	Active        bool   `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (Currency) TableName() string {
+	return "currencies"
+}
+
+// Address represents a physical address
+type Address struct {
+	BaseModel
+	Street     string     `json:"street"`
+	City       string     `json:"city"`
+	State      string     `json:"state"`
+	PostalCode string     `json:"postal_code"`
+	CountryID  *uuid.UUID `gorm:"type:uuid" json:"country_id"`
+	Country    *Country   `gorm:"foreignKey:CountryID" json:"country,omitempty"`
+}
+
+// TableName overrides the table name
+func (Address) TableName() string {
+	return "addresses"
+}
+
+// EntityType represents the type of an entity
+type EntityType string
+
+const (
+	EntityTypeCompany      EntityType = "COMPANY"
+	EntityTypeBusiness     EntityType = "BUSINESS"
+	EntityTypeCorporation  EntityType = "CORPORATION"
+	EntityTypePartnership  EntityType = "PARTNERSHIP"
+	EntityTypeIndividual   EntityType = "INDIVIDUAL"
+)
+
+// Entity represents a business entity (company, individual, etc.)
+type Entity struct {
+	BaseModel
+	Name               string      `gorm:"not null" json:"name" validate:"required"`
+	RegistrationNumber string      `gorm:"uniqueIndex" json:"registration_number"`
+	Type               EntityType  `gorm:"type:varchar(50)" json:"type"`
+	AddressID          *uuid.UUID  `gorm:"type:uuid" json:"address_id"`
+	Address            *Address    `gorm:"foreignKey:AddressID" json:"address,omitempty"`
+	Active             bool        `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (Entity) TableName() string {
+	return "entities"
+}
+
+// InstrumentType represents the type of financial instrument
+type InstrumentType string
+
+const (
+	InstrumentTypeEquity     InstrumentType = "EQUITY"
+	InstrumentTypeBond       InstrumentType = "BOND"
+	InstrumentTypeDerivative InstrumentType = "DERIVATIVE"
+	InstrumentTypeCommodity  InstrumentType = "COMMODITY"
+	InstrumentTypeFund       InstrumentType = "FUND"
+	InstrumentTypeForex      InstrumentType = "FOREX"
+)
+
+// Instrument represents a financial instrument
+type Instrument struct {
+	BaseModel
+	ISIN       string          `gorm:"uniqueIndex;not null" json:"isin" validate:"required"`
+	Name       string          `gorm:"not null" json:"name" validate:"required"`
+	Type       InstrumentType  `gorm:"type:varchar(50)" json:"type"`
+	CurrencyID *uuid.UUID      `gorm:"type:uuid" json:"currency_id"`
+	Currency   *Currency       `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
+	Exchange   string          `json:"exchange"`
+	Active     bool            `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (Instrument) TableName() string {
+	return "instruments"
+}
+
+// AccountType represents the type of account
+type AccountType string
+
+const (
+	AccountTypeTrading    AccountType = "TRADING"
+	AccountTypeSettlement AccountType = "SETTLEMENT"
+	AccountTypeCustody    AccountType = "CUSTODY"
+	AccountTypeMargin     AccountType = "MARGIN"
+)
+
+// Account represents a financial account
+type Account struct {
+	BaseModel
+	AccountNumber string       `gorm:"uniqueIndex;not null" json:"account_number" validate:"required"`
+	EntityID      *uuid.UUID   `gorm:"type:uuid" json:"entity_id"`
+	Entity        *Entity      `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	CurrencyID    *uuid.UUID   `gorm:"type:uuid" json:"currency_id"`
+	Currency      *Currency    `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
+	Type          AccountType  `gorm:"type:varchar(50)" json:"type"`
+	Balance       float64      `gorm:"type:decimal(19,4);default:0" json:"balance"`
+	OpenedAt      time.Time    `json:"opened_at"`
+	Active        bool         `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (Account) TableName() string {
+	return "accounts"
+}
+
+// SettlementType represents the type of settlement
+type SettlementType string
+
+const (
+	SettlementTypeDVP SettlementType = "DVP" // Delivery Versus Payment
+	SettlementTypeFOP SettlementType = "FOP" // Free Of Payment
+	SettlementTypeRVP SettlementType = "RVP" // Receive Versus Payment
+	SettlementTypeDAP SettlementType = "DAP" // Delivery Against Payment
+)
+
+// SSI represents Standard Settlement Instructions
+type SSI struct {
+	BaseModel
+	EntityID              *uuid.UUID      `gorm:"type:uuid" json:"entity_id"`
+	Entity                *Entity         `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	CurrencyID            *uuid.UUID      `gorm:"type:uuid" json:"currency_id"`
+	Currency              *Currency       `gorm:"foreignKey:CurrencyID" json:"currency,omitempty"`
+	InstrumentID          *uuid.UUID      `gorm:"type:uuid" json:"instrument_id"`
+	Instrument            *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
+	BeneficiaryName       string          `gorm:"not null" json:"beneficiary_name" validate:"required"`
+	BeneficiaryAccount    string          `gorm:"not null" json:"beneficiary_account" validate:"required"`
+	BeneficiaryBank       string          `gorm:"not null" json:"beneficiary_bank" validate:"required"`
+	BeneficiaryBankBIC    string          `json:"beneficiary_bank_bic"`
+	IntermediaryBank      string          `json:"intermediary_bank"`
+	IntermediaryBankBIC   string          `json:"intermediary_bank_bic"`
+	SettlementType        SettlementType  `gorm:"type:varchar(50)" json:"settlement_type"`
+	ValidFrom             time.Time       `json:"valid_from"`
+	ValidTo               *time.Time      `json:"valid_to"`
+	Active                bool            `gorm:"default:true" json:"active"`
+}
+
+// TableName overrides the table name
+func (SSI) TableName() string {
+	return "ssis"
+}
+
+// AuditLog represents an audit trail entry
+type AuditLog struct {
+	BaseModel
+	EntityType   string    `gorm:"not null" json:"entity_type"`
+	EntityID     uuid.UUID `gorm:"type:uuid;not null" json:"entity_id"`
+	Action       string    `gorm:"not null" json:"action"` // CREATE, UPDATE, DELETE
+	UserID       uuid.UUID `gorm:"type:uuid" json:"user_id"`
+	ChangedData  string    `gorm:"type:jsonb" json:"changed_data"`
+	PreviousData string    `gorm:"type:jsonb" json:"previous_data"`
+}
+
+// TableName overrides the table name
+func (AuditLog) TableName() string {
+	return "audit_logs"
+}

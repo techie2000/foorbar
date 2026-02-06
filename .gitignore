@@ -1,37 +1,60 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Build artifacts
+/backend/bin/
+/backend/tmp/
+/backend/*.exe
+/backend/*.dll
+/backend/*.so
+/backend/*.dylib
+/backend/*.test
+/backend/*.out
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Go workspace file
+go.work
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+# Frontend
+/frontend/node_modules/
+/frontend/.next/
+/frontend/out/
+/frontend/build/
+/frontend/.env*.local
+/frontend/.vercel
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+# IDEs
+.idea/
 .vscode/
+*.swp
+*.swo
+*~
+.DS_Store
 
-### Temp files ###
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Logs
+*.log
+logs/
+/backend/logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
 /tmp/
 *.tmp
-*.log
+
+# Testing
+/backend/coverage.out
+/backend/coverage.html
+/frontend/coverage/
+
+# Documentation
+/docs/*.pdf

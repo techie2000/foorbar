@@ -1,0 +1,37 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  host: localhost
+  port: 5432
+  user: axiom
+  password: axiom
+  name: axiom
+  sslmode: disable
+
+jwt:
+  secret: change-this-secret-in-production
+  expiry: 24h
+
+rabbitmq:
+  url: amqp://guest:guest@localhost:5672/
+
+log:
+  level: info
+
+cors:
+  allowed_origins:
+    - http://localhost:3000
+    - http://localhost:8080
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Origin
+    - Content-Type
+    - Authorization
+    - Accept
