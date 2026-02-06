@@ -29,7 +29,7 @@ public class DataAcquisitionController {
             return ResponseEntity.ok("Data acquisition initiated");
         } catch (Exception e) {
             log.error("Error acquiring data", e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to acquire data");
         }
     }
     
@@ -44,7 +44,7 @@ public class DataAcquisitionController {
             return ResponseEntity.ok("Data distribution initiated");
         } catch (Exception e) {
             log.error("Error distributing data", e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to distribute data");
         }
     }
 }
