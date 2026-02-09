@@ -69,7 +69,7 @@ Always use the templates in [references/templates.md](references/templates.md). 
 
 Use `mcp__github__update_issue` with:
 
-```yaml
+```text
 owner, repo, issue_number (required)
 title, body, state, labels, assignees, milestone (optional - only changed fields)
 ```
