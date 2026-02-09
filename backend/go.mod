@@ -19,5 +19,5 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/spf13/viper v1.18.2
 	github.com/google/uuid v1.5.0
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.22.0
 )
