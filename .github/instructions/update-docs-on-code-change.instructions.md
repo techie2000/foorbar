@@ -238,23 +238,19 @@ Maintain these documentation files and update as needed:
 ## [Version] - YYYY-MM-DD
 ```text
 
-```
+```markdown
+## [Version] - YYYY-MM-DD
+
 ### Added
-```text
-    - New feature description with reference to PR/issue
+- New feature description with reference to PR/issue
 
-```
 ### Changed
-```text
-    - **BREAKING**: Description of breaking change
-    - Other changes
+- **BREAKING**: Description of breaking change
+- Other changes
 
-```
 ### Fixed
-```text
-    - Bug fix description
+- Bug fix description
 ```
-```text
 ```
 
 ## Documentation Verification `apply-doc-verification`
