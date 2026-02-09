@@ -10,7 +10,7 @@ require (
 	gorm.io/driver/postgres v1.5.4
 	github.com/golang-migrate/migrate/v4 v4.17.0
 	github.com/streadway/amqp v1.1.0
-	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/rs/zerolog v1.31.0
 	github.com/prometheus/client_golang v1.18.0
