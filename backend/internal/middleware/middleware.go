@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -31,6 +32,10 @@ func JWTAuth(cfg *config.Config) gin.HandlerFunc {
 
 		// Parse and validate token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Validate the signing algorithm to prevent algorithm confusion attacks
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
 			return []byte(cfg.JWT.Secret), nil
 		})
 
@@ -53,7 +58,27 @@ func JWTAuth(cfg *config.Config) gin.HandlerFunc {
 // CORS middleware
 func CORS(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", strings.Join(cfg.CORS.AllowedOrigins, ","))
+		origin := c.Request.Header.Get("Origin")
+		
+		// Check if the origin is in the allowed list
+		allowed := false
+		for _, allowedOrigin := range cfg.CORS.AllowedOrigins {
+			if allowedOrigin == "*" || allowedOrigin == origin {
+				allowed = true
+				break
+			}
+		}
+		
+		// Set CORS headers if origin is allowed
+		if allowed {
+			if origin != "" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			} else if len(cfg.CORS.AllowedOrigins) > 0 && cfg.CORS.AllowedOrigins[0] == "*" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			}
+			c.Writer.Header().Set("Vary", "Origin")
+		}
+		
 		c.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(cfg.CORS.AllowedMethods, ","))
 		c.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(cfg.CORS.AllowedHeaders, ","))
 

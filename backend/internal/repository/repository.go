@@ -142,7 +142,7 @@ func (r *entityRepository) Create(entity *domain.Entity) error {
 
 func (r *entityRepository) FindByID(id string) (*domain.Entity, error) {
 	var entity domain.Entity
-	if err := r.db.Preload("Address").Preload("Address.Country").First(&entity, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Addresses").Preload("Addresses.Address").Preload("Addresses.Address.Country").First(&entity, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &entity, nil
@@ -187,7 +187,7 @@ func (r *instrumentRepository) Create(instrument *domain.Instrument) error {
 
 func (r *instrumentRepository) FindByID(id string) (*domain.Instrument, error) {
 	var instrument domain.Instrument
-	if err := r.db.Preload("Currency").First(&instrument, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("IssueCurrency").Preload("Codes").First(&instrument, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &instrument, nil
@@ -195,7 +195,7 @@ func (r *instrumentRepository) FindByID(id string) (*domain.Instrument, error) {
 
 func (r *instrumentRepository) FindAll(limit, offset int) ([]*domain.Instrument, error) {
 	var instruments []*domain.Instrument
-	if err := r.db.Preload("Currency").Limit(limit).Offset(offset).Find(&instruments).Error; err != nil {
+	if err := r.db.Preload("IssueCurrency").Preload("Codes").Limit(limit).Offset(offset).Find(&instruments).Error; err != nil {
 		return nil, err
 	}
 	return instruments, nil
@@ -232,7 +232,7 @@ func (r *accountRepository) Create(account *domain.Account) error {
 
 func (r *accountRepository) FindByID(id string) (*domain.Account, error) {
 	var account domain.Account
-	if err := r.db.Preload("Entity").Preload("Currency").First(&account, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Entity").Preload("AccountCurrency").First(&account, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &account, nil
@@ -240,7 +240,7 @@ func (r *accountRepository) FindByID(id string) (*domain.Account, error) {
 
 func (r *accountRepository) FindAll(limit, offset int) ([]*domain.Account, error) {
 	var accounts []*domain.Account
-	if err := r.db.Preload("Entity").Preload("Currency").Limit(limit).Offset(offset).Find(&accounts).Error; err != nil {
+	if err := r.db.Preload("Entity").Preload("AccountCurrency").Limit(limit).Offset(offset).Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 	return accounts, nil
@@ -277,7 +277,7 @@ func (r *ssiRepository) Create(ssi *domain.SSI) error {
 
 func (r *ssiRepository) FindByID(id string) (*domain.SSI, error) {
 	var ssi domain.SSI
-	if err := r.db.Preload("Entity").Preload("Currency").Preload("Instrument").First(&ssi, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Entity").Preload("SettlementCurrency").Preload("Instrument").First(&ssi, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &ssi, nil
@@ -285,7 +285,7 @@ func (r *ssiRepository) FindByID(id string) (*domain.SSI, error) {
 
 func (r *ssiRepository) FindAll(limit, offset int) ([]*domain.SSI, error) {
 	var ssis []*domain.SSI
-	if err := r.db.Preload("Entity").Preload("Currency").Preload("Instrument").Limit(limit).Offset(offset).Find(&ssis).Error; err != nil {
+	if err := r.db.Preload("Entity").Preload("SettlementCurrency").Preload("Instrument").Limit(limit).Offset(offset).Find(&ssis).Error; err != nil {
 		return nil, err
 	}
 	return ssis, nil
