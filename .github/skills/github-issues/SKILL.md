@@ -30,7 +30,7 @@ Manage GitHub issues using the `@modelcontextprotocol/server-github` MCP server.
 
 ### Required Parameters
 
-```yaml
+```text
 owner: repository owner (org or user)
 repo: repository name
 title: clear, actionable title
@@ -39,7 +39,7 @@ body: structured markdown content
 
 ### Optional Parameters
 
-```yaml
+```text
 labels: ["bug", "enhancement", "documentation", ...]
 assignees: ["username1", "username2"]
 milestone: milestone number (integer)
