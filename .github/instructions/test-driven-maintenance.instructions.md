@@ -1,6 +1,6 @@
 ---
 applyTo: '**/*.go,**/*_test.go'
-description: 'Mandatory test maintenance requirements for Go code changes in csv2json project'
+description: 'Mandatory test maintenance requirements for Go code changes in Axiom project'
 ---
 
 # Test-Driven Maintenance Instructions

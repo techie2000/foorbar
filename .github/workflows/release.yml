@@ -105,10 +105,10 @@ jobs:
           GIT_COMMIT=${{ steps.metadata.outputs.git_commit }}
           BUILD_DATE=${{ steps.metadata.outputs.build_date }}
 
-          LDFLAGS="-w -s -X csv2json/internal/version.GitCommit=$GIT_COMMIT -X csv2json/internal/version.BuildDate=$BUILD_DATE"
+          LDFLAGS="-w -s -X github.com/techie2000/axiom/backend/internal/version.GitCommit=$GIT_COMMIT -X github.com/techie2000/axiom/backend/internal/version.BuildDate=$BUILD_DATE"
 
-          OUTPUT_NAME="csv2json-${{ matrix.suffix }}"
-          go build -ldflags="$LDFLAGS" -o "$OUTPUT_NAME" ./cmd/csv2json
+          OUTPUT_NAME="axiom-api-${{ matrix.suffix }}"
+          go build -ldflags="$LDFLAGS" -o "$OUTPUT_NAME" ./backend/cmd/api
 
           # Create checksum
           if [ "${{ matrix.goos }}" = "windows" ]; then
@@ -124,8 +124,8 @@ jobs:
         with:
           tag_name: v${{ needs.create-release.outputs.version }}
           files: |
-            csv2json-${{ matrix.suffix }}
-            csv2json-${{ matrix.suffix }}.sha256
+            axiom-api-${{ matrix.suffix }}
+            axiom-api-${{ matrix.suffix }}.sha256
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,7 +152,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/csv2json
+          images: ghcr.io/${{ github.repository_owner }}/axiom
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
