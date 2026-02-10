@@ -9,6 +9,8 @@ entities, financial instruments, accounts, and settlement instructions.
 
 ## Architecture
 
+Architecture decisions are documented as ADRs in [docs/adr](docs/adr).
+
 ### Tech Stack
 
 **Backend:**
@@ -144,6 +146,7 @@ npm test
 API documentation is available via Swagger UI at:
 - Local: http://localhost:8080/swagger/index.html
 - Production: https://api.axiom.example.com/swagger/index.html
+  (TODO: replace with the confirmed production base URL)
 
 ## Configuration
 
@@ -202,6 +205,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Detailed documentation is available in the `docs/` directory:
 - [Architecture Overview](docs/architecture.md)
+- [Architecture Decision Records](docs/adr)
 - [API Reference](docs/api-reference.md)
 - [Database Schema](docs/database-schema.md)
 - [Deployment Guide](docs/deployment.md)

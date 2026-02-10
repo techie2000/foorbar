@@ -86,8 +86,8 @@ import (
     "gorm.io/gorm"
     
     // Internal packages
-    "github.com/techie2000/foorbar/backend/internal/domain"
-    "github.com/techie2000/foorbar/backend/pkg/logger"
+    "github.com/techie2000/axiom/backend/internal/domain"
+    "github.com/techie2000/axiom/backend/pkg/logger"
 )
 ```
 

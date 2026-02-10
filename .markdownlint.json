@@ -17,7 +17,10 @@
   "MD024": {
     "siblings_only": true
   },
+  "MD022": true,
   "MD025": false,
+  "MD031": true,
+  "MD032": true,
   "MD033": {
     "allowed_elements": ["details", "summary", "img", "br", "sub", "sup"]
   },

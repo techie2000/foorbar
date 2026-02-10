@@ -1,0 +1,4 @@
+architecture
+backend
+frontend
+devops

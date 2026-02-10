@@ -32,6 +32,7 @@ import (
 
 // @contact.name API Support
 // @contact.email support@axiom.example.com
+// TODO: Replace placeholder contact email before production launch.
 
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
