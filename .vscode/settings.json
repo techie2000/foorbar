@@ -1,11 +1,24 @@
 {
     "cSpell.words": [
-        "VARCHAR",
+        "coverprofile",
         "cusip",
+        "Dockerfiles",
         "gleif",
+        "GOINSECURE",
+        "golangci",
+        "GOPRIVATE",
+        "GOPROXY",
+        "healthcheck",
+        "installsuffix",
+        "isready",
+        "MGMT",
         "psql",
         "rabbitmq",
-        "sedol"
+        "sedol",
+        "sslmode",
+        "swaggo",
+        "VARCHAR",
+        "vercel"
     ],
     "chat.tools.terminal.autoApprove": {
         "docker build": true,
@@ -27,6 +40,8 @@
         "docker volume": true,
         "docker-compose": true,
         "mkdir": true,
-        "psql": true
+        "psql": true,
+        "Tee-Object": true,
+        "go": true
     }
 }

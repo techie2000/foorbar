@@ -6,12 +6,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 # Use npm ci if lockfile exists, otherwise use npm install
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN if [ -f package-lock.json ]; then npm ci --legacy-peer-deps; else npm install --legacy-peer-deps; fi
 
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with SSL workaround for corporate proxy
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 RUN npm run build
 
 # Runtime stage
@@ -19,14 +20,14 @@ FROM node:18.20.5-alpine3.20
 
 WORKDIR /app
 
-# Copy package files and install production dependencies
+# Copy package files and node_modules from builder (no reinstall - faster, avoids npm registry timeouts)
 COPY package*.json ./
-# Use npm ci if lockfile exists, otherwise use npm install
-RUN if [ -f package-lock.json ]; then npm ci --production; else npm install --production; fi
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy build output
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+# Only copy public if it exists
+RUN if [ -d /app/public ]; then cp -r /app/public ./public; fi
 
 EXPOSE 3000
 

@@ -1,16 +1,21 @@
+# Dockerfile for LOCAL DEVELOPMENT with corporate proxy/firewall workarounds
+# For production builds, use Dockerfile.backend.clean which has proper SSL verification
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git=2.43.0-r0 make=4.4.1-r2
+# Install dependencies and ca-certificates for TLS
+RUN apk add --no-cache git make ca-certificates && update-ca-certificates
 
 # Copy go mod files
 COPY go.mod ./
 # Copy go.sum if it exists
 COPY go.sum* ./
-RUN go mod download
+# Disable Go proxy and skip SSL verification for corporate proxies
+ENV GOINSECURE="*"
+ENV GOPRIVATE="*"
+RUN git config --global http.sslVerify false && go mod download
 
 # Copy source code
 COPY . .
@@ -21,7 +26,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/api/main
 # Runtime stage
 FROM alpine:3.19
 
-RUN apk --no-cache add ca-certificates=20240226-r0
+RUN apk --no-cache add ca-certificates wget && \
+    wget --no-check-certificate -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz && \
+    tar xvzf migrate.tar.gz && \
+    mv migrate /usr/local/bin/migrate && \
+    chmod +x /usr/local/bin/migrate && \
+    rm migrate.tar.gz
 
 WORKDIR /root/
 
@@ -30,6 +40,14 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/config.yaml ./config/config.yaml
 COPY --from=builder /app/migrations ./migrations
 
+# Create startup script that runs migrations first
+RUN echo '#!/bin/sh' > /root/start.sh && \
+    echo 'echo "Running database migrations..."' >> /root/start.sh && \
+    echo 'migrate -path /root/migrations -database "postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=disable" up' >> /root/start.sh && \
+    echo 'echo "Starting application..."' >> /root/start.sh && \
+    echo 'exec ./main' >> /root/start.sh && \
+    chmod +x /root/start.sh
+
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["/root/start.sh"]

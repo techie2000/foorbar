@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS lei_raw.lei_records_audit (
     changed_fields JSONB,  -- {"field": {"old": "value", "new": "value"}}
     
     -- Source information
-    source_file_id UUID REFERENCES source_files(id),
+    source_file_id UUID REFERENCES lei_raw.source_files(id),
     changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
     
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS lei_raw.file_processing_status (
     next_run_at TIMESTAMP,
     last_success_at TIMESTAMP,
     
-    current_source_file_id UUID REFERENCES source_files(id),
+    current_source_file_id UUID REFERENCES lei_raw.source_files(id),
     
     error_message TEXT,
     
@@ -162,13 +162,13 @@ CREATE INDEX idx_file_processing_status_status ON lei_raw.file_processing_status
 CREATE INDEX idx_file_processing_status_next_run_at ON lei_raw.file_processing_status(next_run_at);
 
 -- Create triggers for updated_at
-CREATE TRIGGER update_lei_records_updated_at BEFORE UPDATE ON lei_records
+CREATE TRIGGER update_lei_records_updated_at BEFORE UPDATE ON lei_raw.lei_records
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_source_files_updated_at BEFORE UPDATE ON source_files
+CREATE TRIGGER update_source_files_updated_at BEFORE UPDATE ON lei_raw.source_files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_file_processing_status_updated_at BEFORE UPDATE ON file_processing_status
+CREATE TRIGGER update_file_processing_status_updated_at BEFORE UPDATE ON lei_raw.file_processing_status
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert initial job status records

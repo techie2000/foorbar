@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -74,6 +75,8 @@ func Load() (*Config, error) {
 	}
 
 	// Override with environment variables
+	// Map DATABASE_HOST to database.host, DATABASE_PORT to database.port, etc.
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	var config Config
