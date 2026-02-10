@@ -52,13 +52,15 @@ flowchart TD
 
 The system separates read and write operations:
 
-**Commands (Write Operations)**
+#### Commands (Write Operations)
+
 - Create, Update, Delete operations
 - Business rule validation
 - Event publishing to RabbitMQ
 - Audit log generation
 
-**Queries (Read Operations)**
+#### Queries (Read Operations)
+
 - Optimized read models
 - Caching layer
 - Pagination support

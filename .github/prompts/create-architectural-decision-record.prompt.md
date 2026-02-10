@@ -15,7 +15,9 @@ Create an ADR document for `${input:DecisionTitle}` using structured formatting 
 - **Stakeholders**: `${input:Stakeholders}`
 
 ## Input Validation
-If any of the required inputs are not provided or cannot be determined from the conversation history, ask the user to provide the missing information before proceeding with ADR generation.
+
+If any of the required inputs are not provided or cannot be determined from the conversation history,
+ask the user to provide the missing information before proceeding with ADR generation.
 
 ## Requirements
 
@@ -26,11 +28,13 @@ If any of the required inputs are not provided or cannot be determined from the 
 - Structure for machine parsing and human reference
 - Use coded bullet points (3-4 letter codes + 3-digit numbers) for multi-item sections
 
-The ADR must be saved in the `/docs/adr/` directory using the naming convention: `adr-NNNN-[title-slug].md`, where NNNN is the next sequential 4-digit number (e.g., `adr-0001-database-selection.md`).
+The ADR must be saved in the `/docs/adr/` directory using the naming convention: `adr-NNNN-[title-slug].md`,
+where NNNN is the next sequential 4-digit number (e.g., `adr-0001-database-selection.md`).
 
 ## Required Documentation Structure
 
-The documentation file must follow the template below, ensuring that all sections are filled out appropriately. The front matter for the markdown should be structured correctly as per the example following:
+The documentation file must follow the template below, ensuring that all sections are filled out appropriately.
+The front matter for the markdown should be structured correctly as per the example following:
 
 ```md
 ---

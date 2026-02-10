@@ -1,5 +1,5 @@
--- Create UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Create UUID extension (pgcrypto provides gen_random_uuid())
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create countries table
 CREATE TABLE IF NOT EXISTS countries (

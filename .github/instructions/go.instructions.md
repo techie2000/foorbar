@@ -5,7 +5,9 @@ applyTo: '**/*.go,**/go.mod,**/go.sum'
 
 # Go Development Instructions
 
-Follow idiomatic Go practices and community standards when writing Go code. These instructions are based on [Effective Go](https://go.dev/doc/effective_go), [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), and [Google's Go Style Guide](https://google.github.io/styleguide/go/).
+Follow idiomatic Go practices and community standards when writing Go code. These instructions are based on
+[Effective Go](https://go.dev/doc/effective_go), [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments),
+and [Google's Go Style Guide](https://google.github.io/styleguide/go/).
 
 ## General Instructions
 
@@ -19,7 +21,8 @@ Follow idiomatic Go practices and community standards when writing Go code. Thes
 - Write self-documenting code with clear, descriptive names
 - Document exported types, functions, methods, and packages
 - Use Go modules for dependency management
-- Leverage the Go standard library instead of reinventing the wheel (e.g., use `strings.Builder` for string concatenation, `filepath.Join` for path construction)
+- Leverage the Go standard library instead of reinventing the wheel (e.g., use `strings.Builder` for string
+  concatenation, `filepath.Join` for path construction)
 - Prefer standard library solutions over custom implementations when functionality exists
 - Write comments in English by default; translate only upon user request
 - Avoid using emoji in code and comments

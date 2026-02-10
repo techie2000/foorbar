@@ -4,7 +4,8 @@ A modular monolith financial services static data management system built with G
 
 ## Overview
 
-Axiom is a comprehensive financial services platform for managing static data including countries, currencies, entities, financial instruments, accounts, and settlement instructions.
+Axiom is a comprehensive financial services platform for managing static data including countries, currencies,
+entities, financial instruments, accounts, and settlement instructions.
 
 ## Architecture
 
@@ -38,7 +39,7 @@ Axiom is a comprehensive financial services platform for managing static data in
 
 ## Project Structure
 
-```
+```text
 axiom/
 ├── backend/
 │   ├── cmd/                    # Application entry points

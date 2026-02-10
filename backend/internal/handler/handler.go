@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/techie2000/axiom/internal/domain"
 	"github.com/techie2000/axiom/internal/service"
 )
@@ -91,8 +92,18 @@ func NewCountryHandler(service service.CountryService) *CountryHandler {
 // @Security BearerAuth
 // @Router /countries [get]
 func (h *CountryHandler) List(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	// Parse and validate pagination parameters
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter (must be 1-100)"})
+		return
+	}
+	
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil || offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid offset parameter (must be >= 0)"})
+		return
+	}
 
 	countries, err := h.service.GetAll(limit, offset)
 	if err != nil {
@@ -163,12 +174,22 @@ func (h *CountryHandler) Create(c *gin.Context) {
 // @Router /countries/{id} [put]
 func (h *CountryHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+	
+	// Parse UUID from path
+	countryID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
 
 	var country domain.Country
 	if err := c.ShouldBindJSON(&country); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	country.ID = countryID
 
 	// Verify country exists
 	if _, err := h.service.GetByID(id); err != nil {
@@ -250,11 +271,30 @@ func (h *CurrencyHandler) Create(c *gin.Context) {
 }
 
 func (h *CurrencyHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	currencyID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
 	var currency domain.Currency
 	if err := c.ShouldBindJSON(&currency); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	currency.ID = currencyID
+	
+	// Verify currency exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Currency not found"})
+		return
+	}
+	
 	if err := h.service.Update(&currency); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update currency"})
 		return
@@ -320,11 +360,30 @@ func (h *EntityHandler) Create(c *gin.Context) {
 }
 
 func (h *EntityHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	entityID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
 	var entity domain.Entity
 	if err := c.ShouldBindJSON(&entity); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	entity.ID = entityID
+	
+	// Verify entity exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not found"})
+		return
+	}
+	
 	if err := h.service.Update(&entity); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update entity"})
 		return
@@ -375,11 +434,30 @@ func (h *InstrumentHandler) Create(c *gin.Context) {
 }
 
 func (h *InstrumentHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	instrumentID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
 	var instrument domain.Instrument
 	if err := c.ShouldBindJSON(&instrument); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	instrument.ID = instrumentID
+	
+	// Verify instrument exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instrument not found"})
+		return
+	}
+	
 	if err := h.service.Update(&instrument); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update instrument"})
 		return
@@ -430,11 +508,30 @@ func (h *AccountHandler) Create(c *gin.Context) {
 }
 
 func (h *AccountHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	accountID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
 	var account domain.Account
 	if err := c.ShouldBindJSON(&account); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	account.ID = accountID
+	
+	// Verify account exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+	
 	if err := h.service.Update(&account); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update account"})
 		return
@@ -485,11 +582,30 @@ func (h *SSIHandler) Create(c *gin.Context) {
 }
 
 func (h *SSIHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	ssiID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
 	var ssi domain.SSI
 	if err := c.ShouldBindJSON(&ssi); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+	
+	// Apply the path ID to prevent updating wrong record
+	ssi.ID = ssiID
+	
+	// Verify SSI exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "SSI not found"})
+		return
+	}
+	
 	if err := h.service.Update(&ssi); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update SSI"})
 		return

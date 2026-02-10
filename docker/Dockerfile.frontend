@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci
+# Use npm ci if lockfile exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source code
 COPY . .
@@ -20,7 +21,8 @@ WORKDIR /app
 
 # Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm ci --production
+# Use npm ci if lockfile exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci --production; else npm install --production; fi
 
 # Copy build output
 COPY --from=builder /app/.next ./.next

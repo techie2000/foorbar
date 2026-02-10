@@ -1,37 +1,53 @@
 ---
-applyTo: '**/Dockerfile,**/Dockerfile.*,**/*.dockerfile,**/docker-compose*.yml,**/docker-compose*.yaml,**/compose*.yml,**/compose*.yaml'
-description: 'Comprehensive best practices for creating optimized, secure, and efficient Docker images and managing containers. Covers multi-stage builds, image layer optimization, security scanning, and runtime best practices.'
+applyTo:
+'**/Dockerfile,**/Dockerfile.*,**/*.dockerfile,**/docker-compose*.yml,**/docker-compose*.yaml,**/compose*.yml,**/compose*.yaml'
+description: 'Comprehensive best practices for creating optimized, secure,
+and efficient Docker images and managing containers. Covers multi-stage builds, image layer optimization, security scanning, and runtime best practices.'
 ---
 
 # Containerization & Docker Best Practices
 
 ## Your Mission
 
-As GitHub Copilot, you are an expert in containerization with deep knowledge of Docker best practices. Your goal is to guide developers in building highly efficient, secure, and maintainable Docker images and managing their containers effectively. You must emphasize optimization, security, and reproducibility.
+As GitHub Copilot, you are an expert in containerization with deep knowledge of Docker best practices.
+Your goal is to guide developers in building highly efficient, secure,
+You must emphasize optimization, security, and reproducibility.
 
 ## Core Principles of Containerization
 
 ### **1. Immutability**
 - **Principle:** Once a container image is built, it should not change. Any changes should result in a new image.
 - **Deeper Dive:**
-    - **Reproducible Builds:** Every build should produce identical results given the same inputs. This requires deterministic build processes, pinned dependency versions, and controlled build environments.
-    - **Version Control for Images:** Treat container images like code - version them, tag them meaningfully, and maintain a clear history of what each image contains.
-    - **Rollback Capability:** Immutable images enable instant rollbacks by simply switching to a previous image tag, without the complexity of undoing changes.
-    - **Security Benefits:** Immutable images reduce the attack surface by preventing runtime modifications that could introduce vulnerabilities.
+    - **Reproducible Builds:** Every build should produce identical results given the same inputs.
+  This requires deterministic build processes, pinned dependency versions, and controlled build environments.
+    - **Version Control for Images:** Treat container images like code - version them, tag them meaningfully,
+  and maintain a clear history of what each image contains.
+    - **Rollback Capability:** Immutable images enable instant rollbacks by simply switching to a previous image tag,
+  without the complexity of undoing changes.
+    - **Security Benefits:** Immutable images reduce the attack surface by preventing runtime modifications that could
+  introduce vulnerabilities.
 - **Guidance for Copilot:**
-    - Advocate for creating new images for every code change or configuration update, never modifying running containers in production.
+    - Advocate for creating new images for every code change or configuration update,
+  never modifying running containers in production.
     - Recommend using semantic versioning for image tags (e.g., `v1.2.3`, `latest` for development only).
     - Suggest implementing automated image builds triggered by code changes to ensure consistency.
-    - Emphasize the importance of treating container images as artifacts that should be versioned and stored in registries.
-- **Pro Tip:** This enables easy rollbacks and consistent environments across dev, staging, and production. Immutable images are the foundation of reliable deployments.
+    - Emphasize the importance of treating container images as artifacts that should be versioned and stored in
+  registries.
+- **Pro Tip:** This enables easy rollbacks and consistent environments across dev, staging, and production.
+  Immutable images are the foundation of reliable deployments.
 
 ### **2. Portability**
-- **Principle:** Containers should run consistently across different environments (local, cloud, on-premise) without modification.
+- **Principle:** Containers should run consistently across different environments (local, cloud,
+  on-premise) without modification.
 - **Deeper Dive:**
-    - **Environment Agnostic Design:** Design applications to be environment-agnostic by externalizing all environment-specific configurations.
-    - **Configuration Management:** Use environment variables, configuration files, or external configuration services rather than hardcoding environment-specific values.
-    - **Dependency Management:** Ensure all dependencies are explicitly defined and included in the container image, avoiding reliance on host system packages.
-    - **Cross-Platform Compatibility:** Consider the target deployment platforms and ensure compatibility (e.g., ARM vs x86, different Linux distributions).
+    - **Environment Agnostic Design:** Design applications to be environment-agnostic by externalizing all
+  environment-specific configurations.
+    - **Configuration Management:** Use environment variables, configuration files,
+  or external configuration services rather than hardcoding environment-specific values.
+    - **Dependency Management:** Ensure all dependencies are explicitly defined and included in the container image,
+  avoiding reliance on host system packages.
+    - **Cross-Platform Compatibility:** Consider the target deployment platforms and ensure compatibility (e.g.,
+  ARM vs x86, different Linux distributions).
 - **Guidance for Copilot:**
     - Design Dockerfiles that are self-contained and avoid environment-specific configurations within the image itself.
     - Use environment variables for runtime configuration, with sensible defaults but allowing overrides.
@@ -42,42 +58,56 @@ As GitHub Copilot, you are an expert in containerization with deep knowledge of 
 ### **3. Isolation**
 - **Principle:** Containers provide process and resource isolation, preventing interference between applications.
 - **Deeper Dive:**
-    - **Process Isolation:** Each container runs in its own process namespace, preventing one container from seeing or affecting processes in other containers.
-    - **Resource Isolation:** Containers have isolated CPU, memory, and I/O resources, preventing resource contention between applications.
-    - **Network Isolation:** Containers can have isolated network stacks, with controlled communication between containers and external networks.
+    - **Process Isolation:** Each container runs in its own process namespace,
+  preventing one container from seeing or affecting processes in other containers.
+    - **Resource Isolation:** Containers have isolated CPU, memory, and I/O resources,
+  preventing resource contention between applications.
+    - **Network Isolation:** Containers can have isolated network stacks,
+  with controlled communication between containers and external networks.
     - **Filesystem Isolation:** Each container has its own filesystem namespace, preventing file system conflicts.
 - **Guidance for Copilot:**
-    - Recommend running a single process per container (or a clear primary process) to maintain clear boundaries and simplify management.
+    - Recommend running a single process per container (or a clear primary process) to maintain clear boundaries and
+  simplify management.
     - Use container networking for inter-container communication rather than host networking.
     - Suggest implementing resource limits to prevent containers from consuming excessive resources.
     - Advise on using named volumes for persistent data rather than bind mounts when possible.
-- **Pro Tip:** Proper isolation is the foundation of container security and reliability. Don't break isolation for convenience.
+- **Pro Tip:** Proper isolation is the foundation of container security and reliability.
+  Don't break isolation for convenience.
 
 ### **4. Efficiency & Small Images**
 - **Principle:** Smaller images are faster to build, push, pull, and consume fewer resources.
 - **Deeper Dive:**
-    - **Build Time Optimization:** Smaller images build faster, reducing CI/CD pipeline duration and developer feedback time.
-    - **Network Efficiency:** Smaller images transfer faster over networks, reducing deployment time and bandwidth costs.
-    - **Storage Efficiency:** Smaller images consume less storage in registries and on hosts, reducing infrastructure costs.
-    - **Security Benefits:** Smaller images have a reduced attack surface, containing fewer packages and potential vulnerabilities.
+    - **Build Time Optimization:** Smaller images build faster,
+  reducing CI/CD pipeline duration and developer feedback time.
+    - **Network Efficiency:** Smaller images transfer faster over networks,
+  reducing deployment time and bandwidth costs.
+    - **Storage Efficiency:** Smaller images consume less storage in registries and on hosts,
+  reducing infrastructure costs.
+    - **Security Benefits:** Smaller images have a reduced attack surface,
+  containing fewer packages and potential vulnerabilities.
 - **Guidance for Copilot:**
     - Prioritize techniques for reducing image size and build time throughout the development process.
     - Advise against including unnecessary tools, debugging utilities, or development dependencies in production images.
     - Recommend regular image size analysis and optimization as part of the development workflow.
     - Suggest using multi-stage builds and minimal base images as the default approach.
-- **Pro Tip:** Image size optimization is an ongoing process, not a one-time task. Regularly review and optimize your images.
+- **Pro Tip:** Image size optimization is an ongoing process, not a one-time task.
+  Regularly review and optimize your images.
 
 ## Dockerfile Best Practices
 
 ### **1. Multi-Stage Builds (The Golden Rule)**
-- **Principle:** Use multiple `FROM` instructions in a single Dockerfile to separate build-time dependencies from runtime dependencies.
+- **Principle:** Use multiple `FROM` instructions in a single Dockerfile to separate build-time dependencies from
+  runtime dependencies.
 - **Deeper Dive:**
-    - **Build Stage Optimization:** The build stage can include compilers, build tools, and development dependencies without affecting the final image size.
-    - **Runtime Stage Minimization:** The runtime stage contains only the application and its runtime dependencies, significantly reducing the attack surface.
+    - **Build Stage Optimization:** The build stage can include compilers, build tools,
+  and development dependencies without affecting the final image size.
+    - **Runtime Stage Minimization:** The runtime stage contains only the application and its runtime dependencies,
+  significantly reducing the attack surface.
     - **Artifact Transfer:** Use `COPY --from=<stage>` to transfer only necessary artifacts between stages.
     - **Parallel Build Stages:** Multiple build stages can run in parallel if they don't depend on each other.
 - **Guidance for Copilot:**
-    - Always recommend multi-stage builds for compiled languages (Go, Java, .NET, C++) and even for Node.js/Python where build tools are heavy.
+    - Always recommend multi-stage builds for compiled languages (Go, Java, .NET,
+  C++) and even for Node.js/Python where build tools are heavy.
     - Suggest naming build stages descriptively (e.g., `AS build`, `AS test`, `AS production`) for clarity.
     - Recommend copying only the necessary artifacts between stages to minimize the final image size.
     - Advise on using different base images for build and runtime stages when appropriate.
@@ -117,8 +147,10 @@ CMD ["node", "dist/main.js"]
 ### **2. Choose the Right Base Image**
 - **Principle:** Select official, stable, and minimal base images that meet your application's requirements.
 - **Deeper Dive:**
-    - **Official Images:** Prefer official images from Docker Hub or cloud providers as they are regularly updated and maintained.
-    - **Minimal Variants:** Use minimal variants (`alpine`, `slim`, `distroless`) when possible to reduce image size and attack surface.
+    - **Official Images:** Prefer official images from Docker Hub or cloud providers as they are regularly updated and
+  maintained.
+    - **Minimal Variants:** Use minimal variants (`alpine`, `slim`,
+  `distroless`) when possible to reduce image size and attack surface.
     - **Security Updates:** Choose base images that receive regular security updates and have a clear update policy.
     - **Architecture Support:** Ensure the base image supports your target architectures (x86_64, ARM64, etc.).
 - **Guidance for Copilot:**
@@ -126,17 +158,23 @@ CMD ["node", "dist/main.js"]
     - Use official language-specific images (e.g., `python:3.9-slim-buster`, `openjdk:17-jre-slim`).
     - Avoid `latest` tag in production; use specific version tags for reproducibility.
     - Recommend regularly updating base images to get security patches and new features.
-- **Pro Tip:** Smaller base images mean fewer vulnerabilities and faster downloads. Always start with the smallest image that meets your needs.
+- **Pro Tip:** Smaller base images mean fewer vulnerabilities and faster downloads.
+  Always start with the smallest image that meets your needs.
 
 ### **3. Optimize Image Layers**
-- **Principle:** Each instruction in a Dockerfile creates a new layer. Leverage caching effectively to optimize build times and image size.
+- **Principle:** Each instruction in a Dockerfile creates a new layer.
+  Leverage caching effectively to optimize build times and image size.
 - **Deeper Dive:**
-    - **Layer Caching:** Docker caches layers and reuses them if the instruction hasn't changed. Order instructions from least to most frequently changing.
+    - **Layer Caching:** Docker caches layers and reuses them if the instruction hasn't changed.
+  Order instructions from least to most frequently changing.
     - **Layer Size:** Each layer adds to the final image size. Combine related commands to reduce the number of layers.
-    - **Cache Invalidation:** Changes to any layer invalidate all subsequent layers. Place frequently changing content (like source code) near the end.
-    - **Multi-line Commands:** Use `\` for multi-line commands to improve readability while maintaining layer efficiency.
+    - **Cache Invalidation:** Changes to any layer invalidate all subsequent layers.
+  Place frequently changing content (like source code) near the end.
+    - **Multi-line Commands:** Use `\` for multi-line commands to improve readability while maintaining layer
+  efficiency.
 - **Guidance for Copilot:**
-    - Place frequently changing instructions (e.g., `COPY . .`) *after* less frequently changing ones (e.g., `RUN npm ci`).
+    - Place frequently changing instructions (e.g., `COPY .
+  .`) *after* less frequently changing ones (e.g., `RUN npm ci`).
     - Combine `RUN` commands where possible to minimize layers (e.g., `RUN apt-get update && apt-get install -y ...`).
     - Clean up temporary files in the same `RUN` command (`rm -rf /var/lib/apt/lists/*`).
     - Use multi-line commands with `\` for complex operations to maintain readability.
@@ -162,13 +200,15 @@ RUN apt-get update && \
 ### **4. Use `.dockerignore` Effectively**
 - **Principle:** Exclude unnecessary files from the build context to speed up builds and reduce image size.
 - **Deeper Dive:**
-    - **Build Context Size:** The build context is sent to the Docker daemon. Large contexts slow down builds and consume resources.
+    - **Build Context Size:** The build context is sent to the Docker daemon.
+  Large contexts slow down builds and consume resources.
     - **Security:** Exclude sensitive files (like `.env`, `.git`) to prevent accidental inclusion in images.
     - **Development Files:** Exclude development-only files that aren't needed in the production image.
     - **Build Artifacts:** Exclude build artifacts that will be generated during the build process.
 - **Guidance for Copilot:**
     - Always suggest creating and maintaining a comprehensive `.dockerignore` file.
-    - Common exclusions: `.git`, `node_modules` (if installed inside container), build artifacts from host, documentation, test files.
+    - Common exclusions: `.git`, `node_modules` (if installed inside container), build artifacts from host,
+  documentation, test files.
     - Recommend reviewing the `.dockerignore` file regularly as the project evolves.
     - Suggest using patterns that match your project structure and exclude unnecessary files.
 - **Example (Comprehensive .dockerignore):**
@@ -218,12 +258,15 @@ __tests__/
 - **Principle:** Copy only what is necessary, when it is necessary, to optimize layer caching and reduce image size.
 - **Deeper Dive:**
     - **Selective Copying:** Copy specific files or directories rather than entire project directories when possible.
-    - **Layer Caching:** Each `COPY` instruction creates a new layer. Copy files that change together in the same instruction.
+    - **Layer Caching:** Each `COPY` instruction creates a new layer.
+  Copy files that change together in the same instruction.
     - **Build Context:** Only copy files that are actually needed for the build or runtime.
     - **Security:** Be careful not to copy sensitive files or unnecessary configuration files.
 - **Guidance for Copilot:**
-    - Use specific paths for `COPY` (`COPY src/ ./src/`) instead of copying the entire directory (`COPY . .`) if only a subset is needed.
-    - Copy dependency files (like `package.json`, `requirements.txt`) before copying source code to leverage layer caching.
+    - Use specific paths for `COPY` (`COPY src/ ./src/`) instead of copying the entire directory (`COPY .
+  .`) if only a subset is needed.
+    - Copy dependency files (like `package.json`,
+  `requirements.txt`) before copying source code to leverage layer caching.
     - Recommend copying only the necessary files for each stage in multi-stage builds.
     - Suggest using `.dockerignore` to exclude files that shouldn't be copied.
 - **Example (Optimized COPY Strategy):**
@@ -245,9 +288,11 @@ COPY config/ ./config/
 ### **6. Define Default User and Port**
 - **Principle:** Run containers with a non-root user for security and expose expected ports for clarity.
 - **Deeper Dive:**
-    - **Security Benefits:** Running as non-root reduces the impact of security vulnerabilities and follows the principle of least privilege.
+    - **Security Benefits:** Running as non-root reduces the impact of security vulnerabilities and follows the
+  principle of least privilege.
     - **User Creation:** Create a dedicated user for your application rather than using an existing user.
-    - **Port Documentation:** Use `EXPOSE` to document which ports the application listens on, even though it doesn't actually publish them.
+    - **Port Documentation:** Use `EXPOSE` to document which ports the application listens on,
+  even though it doesn't actually publish them.
     - **Permission Management:** Ensure the non-root user has the necessary permissions to run the application.
 - **Guidance for Copilot:**
     - Use `USER <non-root-user>` to run the application process as a non-root user for security.
@@ -273,25 +318,34 @@ CMD ["node", "dist/main.js"]
 ```
 
 ### **7. Use `CMD` and `ENTRYPOINT` Correctly**
-- **Principle:** Define the primary command that runs when the container starts, with clear separation between the executable and its arguments.
+- **Principle:** Define the primary command that runs when the container starts,
+  with clear separation between the executable and its arguments.
 - **Deeper Dive:**
-    - **`ENTRYPOINT`:** Defines the executable that will always run. Makes the container behave like a specific application.
-    - **`CMD`:** Provides default arguments to the `ENTRYPOINT` or defines the command to run if no `ENTRYPOINT` is specified.
-    - **Shell vs Exec Form:** Use exec form (`["command", "arg1", "arg2"]`) for better signal handling and process management.
+    - **`ENTRYPOINT`:** Defines the executable that will always run.
+  Makes the container behave like a specific application.
+    - **`CMD`:** Provides default arguments to the `ENTRYPOINT` or defines the command to run if no `ENTRYPOINT` is
+  specified.
+    - **Shell vs Exec Form:** Use exec form (`["command", "arg1",
+  "arg2"]`) for better signal handling and process management.
     - **Flexibility:** The combination allows for both default behavior and runtime customization.
 - **Guidance for Copilot:**
-    - Use `ENTRYPOINT` for the executable and `CMD` for arguments (`ENTRYPOINT ["/app/start.sh"]`, `CMD ["--config", "prod.conf"]`).
+    - Use `ENTRYPOINT` for the executable and `CMD` for arguments (`ENTRYPOINT ["/app/start.sh"]`, `CMD ["--config",
+  "prod.conf"]`).
     - For simple execution, `CMD ["executable", "param1"]` is often sufficient.
     - Prefer exec form over shell form for better process management and signal handling.
     - Consider using shell scripts as entrypoints for complex startup logic.
-- **Pro Tip:** `ENTRYPOINT` makes the image behave like an executable, while `CMD` provides default arguments. This combination provides flexibility and clarity.
+- **Pro Tip:** `ENTRYPOINT` makes the image behave like an executable, while `CMD` provides default arguments.
+  This combination provides flexibility and clarity.
 
 ### **8. Environment Variables for Configuration**
-- **Principle:** Externalize configuration using environment variables or mounted configuration files to make images portable and configurable.
+- **Principle:** Externalize configuration using environment variables or mounted configuration files to make images
+  portable and configurable.
 - **Deeper Dive:**
-    - **Runtime Configuration:** Use environment variables for configuration that varies between environments (databases, API endpoints, feature flags).
+    - **Runtime Configuration:** Use environment variables for configuration that varies between environments
+  (databases, API endpoints, feature flags).
     - **Default Values:** Provide sensible defaults with `ENV` but allow overriding at runtime.
-    - **Configuration Validation:** Validate required environment variables at startup to fail fast if configuration is missing.
+    - **Configuration Validation:** Validate required environment variables at startup to fail fast if configuration is
+  missing.
     - **Security:** Never hardcode secrets in environment variables in the Dockerfile.
 - **Guidance for Copilot:**
     - Avoid hardcoding configuration inside the image. Use `ENV` for default values, but allow overriding at runtime.
@@ -318,8 +372,10 @@ CMD ["node", "dist/main.js"]
 ### **1. Non-Root User**
 - **Principle:** Running containers as `root` is a significant security risk and should be avoided in production.
 - **Deeper Dive:**
-    - **Privilege Escalation:** Root containers can potentially escape to the host system if there are vulnerabilities in the container runtime.
-    - **File System Access:** Root containers have access to all files and directories, potentially exposing sensitive host data.
+    - **Privilege Escalation:** Root containers can potentially escape to the host system if there are vulnerabilities
+  in the container runtime.
+    - **File System Access:** Root containers have access to all files and directories,
+  potentially exposing sensitive host data.
     - **Network Access:** Root containers can bind to privileged ports and potentially interfere with host networking.
     - **Resource Abuse:** Root containers can consume excessive system resources without proper limits.
 - **Guidance for Copilot:**
@@ -345,7 +401,8 @@ VOLUME ["/app/data"]
 ### **2. Minimal Base Images**
 - **Principle:** Smaller images mean fewer packages, thus fewer vulnerabilities and a reduced attack surface.
 - **Deeper Dive:**
-    - **Attack Surface Reduction:** Each package in the base image represents a potential vulnerability. Fewer packages mean fewer potential attack vectors.
+    - **Attack Surface Reduction:** Each package in the base image represents a potential vulnerability.
+  Fewer packages mean fewer potential attack vectors.
     - **Update Frequency:** Minimal images are updated more frequently and have shorter vulnerability exposure windows.
     - **Resource Efficiency:** Smaller images consume less storage and network bandwidth.
     - **Build Speed:** Smaller base images build faster and are easier to scan for vulnerabilities.
@@ -374,7 +431,8 @@ FROM gcr.io/distroless/nodejs18-debian11
     - **CI/CD Integration:** Integrate security scanning into the CI/CD pipeline to catch issues early.
     - **Policy Enforcement:** Define security policies and enforce them through automated scanning.
 - **Guidance for Copilot:**
-    - Recommend integrating tools like `hadolint` (for Dockerfile linting) and `Trivy`, `Clair`, or `Snyk Container` (for image vulnerability scanning) into your CI pipeline.
+    - Recommend integrating tools like `hadolint` (for Dockerfile linting) and `Trivy`, `Clair`,
+  or `Snyk Container` (for image vulnerability scanning) into your CI pipeline.
     - Suggest setting up automated scanning for both Dockerfiles and built images.
     - Recommend failing builds if critical vulnerabilities are found in base images.
     - Advise on regular scanning of images in registries for newly discovered vulnerabilities.
@@ -413,7 +471,8 @@ cosign verify -key cosign.pub myregistry.com/myapp:v1.0.0
 ```
 
 ### **5. Limit Capabilities & Read-Only Filesystems**
-- **Principle:** Restrict container capabilities and ensure read-only access where possible to minimize the attack surface.
+- **Principle:** Restrict container capabilities and ensure read-only access where possible to minimize the attack
+  surface.
 - **Deeper Dive:**
     - **Linux Capabilities:** Drop unnecessary Linux capabilities that containers don't need to function.
     - **Read-Only Root:** Mount the root filesystem as read-only when possible to prevent runtime modifications.
@@ -434,14 +493,17 @@ RUN setcap -r /usr/bin/node
 ```
 
 ### **6. No Sensitive Data in Image Layers**
-- **Principle:** Never include secrets, private keys, or credentials in image layers as they become part of the image history.
+- **Principle:** Never include secrets, private keys,
+  or credentials in image layers as they become part of the image history.
 - **Deeper Dive:**
-    - **Layer History:** All files added to an image are stored in the image history and can be extracted even if deleted in later layers.
+    - **Layer History:** All files added to an image are stored in the image history and can be extracted even if
+  deleted in later layers.
     - **Build Arguments:** While `--build-arg` can pass data during build, avoid passing sensitive information this way.
     - **Runtime Secrets:** Use secrets management solutions to inject sensitive data at runtime.
     - **Image Scanning:** Regular image scanning can detect accidentally included secrets.
 - **Guidance for Copilot:**
-    - Use build arguments (`--build-arg`) for temporary secrets during build (but avoid passing sensitive info directly).
+    - Use build arguments (`--build-arg`) for temporary secrets during build (but avoid passing sensitive info
+  directly).
     - Use secrets management solutions for runtime (Kubernetes Secrets, Docker Secrets, HashiCorp Vault).
     - Recommend scanning images for accidentally included secrets.
     - Suggest using multi-stage builds to avoid including build-time secrets in the final image.
@@ -459,10 +521,13 @@ CMD ["node", "dist/main.js"]
 ### **7. Health Checks (Liveness & Readiness Probes)**
 - **Principle:** Ensure containers are running and ready to serve traffic by implementing proper health checks.
 - **Deeper Dive:**
-    - **Liveness Probes:** Check if the application is alive and responding to requests. Restart the container if it fails.
+    - **Liveness Probes:** Check if the application is alive and responding to requests.
+  Restart the container if it fails.
     - **Readiness Probes:** Check if the application is ready to receive traffic. Remove from load balancer if it fails.
-    - **Health Check Design:** Design health checks that are lightweight, fast, and accurately reflect application health.
-    - **Orchestration Integration:** Health checks are critical for orchestration systems like Kubernetes to manage container lifecycle.
+    - **Health Check Design:** Design health checks that are lightweight, fast,
+  and accurately reflect application health.
+    - **Orchestration Integration:** Health checks are critical for orchestration systems like Kubernetes to manage
+  container lifecycle.
 - **Guidance for Copilot:**
     - Define `HEALTHCHECK` instructions in Dockerfiles. These are critical for orchestration systems like Kubernetes.
     - Design health checks that are specific to your application and check actual functionality.
@@ -484,8 +549,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ### **1. Resource Limits**
 - **Principle:** Limit CPU and memory to prevent resource exhaustion and noisy neighbors.
 - **Deeper Dive:**
-    - **CPU Limits:** Set CPU limits to prevent containers from consuming excessive CPU time and affecting other containers.
-    - **Memory Limits:** Set memory limits to prevent containers from consuming all available memory and causing system instability.
+    - **CPU Limits:** Set CPU limits to prevent containers from consuming excessive CPU time and affecting other
+  containers.
+    - **Memory Limits:** Set memory limits to prevent containers from consuming all available memory and causing system
+  instability.
     - **Resource Requests:** Set resource requests to ensure containers have guaranteed access to minimum resources.
     - **Monitoring:** Monitor resource usage to ensure limits are appropriate and not too restrictive.
 - **Guidance for Copilot:**
@@ -674,7 +741,10 @@ spec:
 
 ## Conclusion
 
-Effective containerization with Docker is fundamental to modern DevOps. By following these best practices for Dockerfile creation, image optimization, security, and runtime management, you can guide developers in building highly efficient, secure, and portable applications. Remember to continuously evaluate and refine your container strategies as your application evolves.
+Effective containerization with Docker is fundamental to modern DevOps.
+By following these best practices for Dockerfile creation, image optimization, security, and runtime
+management, you can guide developers in building highly efficient, secure, and portable applications.
+Remember to continuously evaluate and refine your container strategies as your application evolves.
 
 ---
 

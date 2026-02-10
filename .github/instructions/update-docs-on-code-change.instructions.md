@@ -1,5 +1,6 @@
 ---
-description: 'Automatically update README.md and documentation files when application code changes require documentation updates'
+description: 'Automatically update README.md and documentation files when application code changes require
+documentation updates'
 applyTo: '**/*.{md,js,mjs,cjs,ts,tsx,jsx,py,java,cs,go,rb,php,rs,cpp,c,h,hpp}'
 ---
 
@@ -44,12 +45,16 @@ section. This allows for custom cases and/or conditions to be checked that will 
 implementation for that **configurable instruction section**.
 
 Before resolving on how to apply a **configurable instruction section**, check the
-**configurable property** for a nested and/or corresponding `apply-condition`, and utilize the `apply-condition` when settling on the final approach for the **configurable instruction section**. By
+**configurable property** for a nested and/or corresponding `apply-condition`,
+and utilize the `apply-condition` when settling on the final approach for the **configurable instruction section**. By
 default the `apply-condition` for each **configurable property** is unset, but an example of a set
 `apply-condition` could be something like:
 
-    - **apply-condition** :
-      ` this.parent.property = (git.branch == "master") ? this.parent.property = true : this.parent.property = false; `
+- **apply-condition** :
+
+```text
+this.parent.property = (git.branch == "master") ? this.parent.property = true : this.parent.property = false;
+```
 
 The sum of all the **constant instructions sections**, and **configurable instruction sections**
 will determine the complete instructions to follow. Call this the **COMPILED INSTRUCTIONS**.
@@ -80,19 +85,6 @@ of instructions that are independent of the entirety of this instruction file. C
 - **apply-git-integration** : false
   - **apply-condition** : unset
 
-<!--
-| Configuration Property         | Default | Description                                                                 | When to Enable/Disable                                      |
-|-------------------------------|---------|-----------------------------------------------------------------------------|-------------------------------------------------------------|
-| apply-doc-file-structure      | true    | Ensures documentation follows a consistent file structure.                  | Disable if you want to allow free-form doc organization.    |
-| apply-doc-verification        | true    | Verifies that documentation matches code changes.                           | Disable if verification is handled elsewhere.               |
-| apply-doc-quality-standard    | true    | Enforces documentation quality standards.                                   | Disable if quality standards are not required.              |
-| apply-automation-tooling      | true    | Uses automation tools to update documentation.                              | Disable if you prefer manual documentation updates.         |
-| apply-doc-patterns            | true    | Applies common documentation patterns and templates.                        | Disable for custom or unconventional documentation styles.  |
-| apply-best-practices          | true    | Enforces best practices in documentation.                                   | Disable if best practices are not a priority.               |
-| apply-validation-commands     | true    | Runs validation commands to check documentation correctness.                 | Disable if validation is not needed.                        |
-| apply-maintenance-schedule    | true    | Schedules regular documentation maintenance.                                | Disable if maintenance is managed differently.              |
-| apply-git-integration         | false   | Integrates documentation updates with Git workflows.                        | Enable if you want automatic Git integration.               |
--->
 ## When to Update Documentation
 
 ### Trigger Conditions
@@ -241,19 +233,25 @@ Maintain these documentation files and update as needed:
 
 **Changelog format:**
 
-    ```markdown
-    ## [Version] - YYYY-MM-DD
+```text
+```markdown
+## [Version] - YYYY-MM-DD
+```text
 
-    ### Added
-    - New feature description with reference to PR/issue
+```markdown
+## [Version] - YYYY-MM-DD
 
-    ### Changed
-    - **BREAKING**: Description of breaking change
-    - Other changes
+### Added
+- New feature description with reference to PR/issue
 
-    ### Fixed
-    - Bug fix description
-    ```
+### Changed
+- **BREAKING**: Description of breaking change
+- Other changes
+
+### Fixed
+- Bug fix description
+```
+```
 
 ## Documentation Verification `apply-doc-verification`
 
@@ -281,12 +279,12 @@ If `apply-doc-verification == true`, then apply the following configurable instr
 - Validate configuration examples against schemas
 - Ensure API examples match current implementation
 
-    ```bash
-    # Example validation commands
-    npm run docs:check         # Verify docs build
-    npm run docs:test-examples # Test code examples
-    npm run docs:lint         # Check for issues
-    ```
+```bash
+# Example validation commands
+npm run docs:check         # Verify docs build
+npm run docs:test-examples # Test code examples
+npm run docs:lint         # Check for issues
+```
 
 ## Documentation Quality Standards `apply-doc-quality-standard`
 
@@ -303,30 +301,42 @@ If `apply-doc-quality-standard == true`, then apply the following configurable i
 
 ### Code Example Format
 
-    ```markdown
-    ### Example: [Clear description of what example demonstrates]
+```text
+```markdown
+### Example: [Clear description of what example demonstrates]
+```text
 
-    \`\`\`language
-    // Include necessary imports/setup
-    import { function } from 'package';
+```
+\`\`\`language
+// Include necessary imports/setup
+import { function } from 'package';
+```text
 
-    // Complete, runnable example
-    const result = function(parameter);
-    console.log(result);
-    \`\`\`
+```
+// Complete, runnable example
+const result = function(parameter);
+console.log(result);
+\`\`\`
+```text
 
     **Output:**
-    \`\`\`
-    expected output
-    \`\`\`
-    ```
+```
+\`\`\`
+expected output
+\`\`\`
+```text
+```
 
 ### API Documentation Format
 
-    ```markdown
-    ### `functionName(param1, param2)`
+```text
+```markdown
+### `functionName(param1, param2)`
+```text
 
-    Brief description of what the function does.
+```
+Brief description of what the function does.
+```text
 
     **Parameters:**
     - `param1` (type): Description of parameter
@@ -336,13 +346,17 @@ If `apply-doc-quality-standard == true`, then apply the following configurable i
     - `type`: Description of return value
 
     **Example:**
-    \`\`\`language
-    const result = functionName('value', 42);
-    \`\`\`
+```
+\`\`\`language
+const result = functionName('value', 42);
+\`\`\`
+```text
 
     **Throws:**
     - `ErrorType`: When and why error is thrown
-    ```
+```
+```text
+```
 
 ## Automation and Tooling `apply-automation-tooling`
 
@@ -385,54 +399,84 @@ If `apply-doc-patterns == true`, then apply the following configurable instructi
 
 ### Feature Documentation Template
 
-    ```markdown
-    ## Feature Name
+```text
+```markdown
+## Feature Name
+```text
 
-    Brief description of the feature.
+```
+Brief description of the feature.
+```text
 
-    ### Usage
+```
+### Usage
+```text
 
-    Basic usage example with code snippet.
+```
+Basic usage example with code snippet.
+```text
 
-    ### Configuration
+```
+### Configuration
+```text
 
-    Configuration options with examples.
+```
+Configuration options with examples.
+```text
 
-    ### Advanced Usage
+```
+### Advanced Usage
+```text
 
-    Complex scenarios and edge cases.
+```
+Complex scenarios and edge cases.
+```text
 
-    ### Troubleshooting
+```
+### Troubleshooting
+```text
 
-    Common issues and solutions.
-    ```
+```
+Common issues and solutions.
+```text
+```
 
 ### API Endpoint Documentation Template
 
-    ```markdown
-    ### `HTTP_METHOD /api/endpoint`
+```text
+```markdown
+### `HTTP_METHOD /api/endpoint`
+```text
 
-    Description of what the endpoint does.
+```
+Description of what the endpoint does.
+```text
 
     **Request:**
-    \`\`\`json
-    {
-      "param": "value"
-    }
-    \`\`\`
+```
+\`\`\`json
+{
+  "param": "value"
+}
+\`\`\`
+```text
 
     **Response:**
-    \`\`\`json
-    {
-      "result": "value"
-    }
-    \`\`\`
+```
+\`\`\`json
+{
+  "result": "value"
+}
+\`\`\`
+```text
 
     **Status Codes:**
     - 200: Success
     - 400: Bad request
     - 401: Unauthorized
-    ```
+```
+```text
+```
 
 ## Best Practices `apply-best-practices`
 
@@ -467,12 +511,14 @@ Example scripts to apply to your project for documentation validation:
 ```json
 {
   "scripts": {
-    "docs:build": "Build documentation",
-    "docs:test": "Test code examples in docs",
-    "docs:lint": "Lint documentation files",
-    "docs:links": "Check for broken links",
-    "docs:spell": "Spell check documentation",
-    "docs:validate": "Run all documentation checks"
+```
+"docs:build": "Build documentation",
+"docs:test": "Test code examples in docs",
+"docs:lint": "Lint documentation files",
+"docs:links": "Check for broken links",
+"docs:spell": "Spell check documentation",
+"docs:validate": "Run all documentation checks"
+```text
   }
 }
 ```
