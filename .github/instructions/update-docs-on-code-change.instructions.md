@@ -251,7 +251,6 @@ Maintain these documentation files and update as needed:
 ### Fixed
 - Bug fix description
 ```
-```
 
 ## Documentation Verification `apply-doc-verification`
 
