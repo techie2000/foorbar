@@ -1,0 +1,32 @@
+{
+    "cSpell.words": [
+        "VARCHAR",
+        "cusip",
+        "gleif",
+        "psql",
+        "rabbitmq",
+        "sedol"
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "docker build": true,
+        "docker compose": true,
+        "docker cp": true,
+        "docker exec": true,
+        "docker image": true,
+        "docker images": true,
+        "docker inspect": true,
+        "docker logs": true,
+        "docker network": true,
+        "docker pause": true,
+        "docker ps": true,
+        "docker restart": true,
+        "docker rm": true,
+        "docker rmi": true,
+        "docker run": true,
+        "docker stop": true,
+        "docker volume": true,
+        "docker-compose": true,
+        "mkdir": true,
+        "psql": true
+    }
+}
