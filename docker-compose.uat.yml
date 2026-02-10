@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data_uat:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - axiom-uat
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MGMT_PORT}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - axiom-uat
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: ${COMPOSE_PROJECT_NAME}-backend
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      SERVER_PORT: ${SERVER_PORT}
+      SERVER_MODE: ${SERVER_MODE}
+    ports:
+      - "${BACKEND_PORT}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - axiom-uat
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: ${COMPOSE_PROJECT_NAME}-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - axiom-uat
+
+volumes:
+  postgres_data_uat:
+
+networks:
+  axiom-uat:
+    name: ${COMPOSE_PROJECT_NAME}-network
