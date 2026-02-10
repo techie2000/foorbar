@@ -19,11 +19,12 @@ type Handlers struct {
 	Instrument      *InstrumentHandler
 	Account         *AccountHandler
 	SSI             *SSIHandler
+	LEI             *LEIHandler
 	DataAcquisition *DataAcquisitionHandler
 }
 
 // NewHandlers creates a new handlers instance
-func NewHandlers(services *service.Services) *Handlers {
+func NewHandlers(services *service.Services, schedulerService service.SchedulerService) *Handlers {
 	return &Handlers{
 		Auth:            NewAuthHandler(),
 		Country:         NewCountryHandler(services.Country),
@@ -32,6 +33,7 @@ func NewHandlers(services *service.Services) *Handlers {
 		Instrument:      NewInstrumentHandler(services.Instrument),
 		Account:         NewAccountHandler(services.Account),
 		SSI:             NewSSIHandler(services.SSI),
+		LEI:             NewLEIHandler(services.LEI, schedulerService),
 		DataAcquisition: NewDataAcquisitionHandler(),
 	}
 }

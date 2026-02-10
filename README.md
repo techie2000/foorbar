@@ -110,7 +110,85 @@ axiom/
 - RabbitMQ 3.12+
 - Docker & Docker Compose
 
-### Local Development with Docker Compose
+### Multi-Environment Support
+
+Axiom supports running multiple environments simultaneously on the same machine. Each environment uses a unique port
+prefix to avoid conflicts:
+
+- **Development (dev)**: Port prefix 1 (e.g., 18080, 13000, 15432)
+- **UAT**: Port prefix 2 (e.g., 28080, 23000, 25432)
+- **Production (prod)**: Port prefix 3 (e.g., 38080, 33000, 35432)
+
+#### Starting a Specific Environment
+
+```bash
+# Start development environment
+make docker-dev-up
+
+# Start UAT environment
+make docker-uat-up
+
+# Start production environment
+make docker-prod-up
+
+# Start all environments simultaneously
+make docker-all-up
+```
+
+#### Stopping Environments
+
+```bash
+# Stop development environment
+make docker-dev-down
+
+# Stop UAT environment
+make docker-uat-down
+
+# Stop production environment
+make docker-prod-down
+
+# Stop all environments
+make docker-all-down
+```
+
+#### Checking Environment Status
+
+```bash
+# View status of all environments
+make docker-all-status
+
+# View logs for specific environment
+make docker-dev-logs    # Development
+make docker-uat-logs    # UAT
+make docker-prod-logs   # Production
+```
+
+#### Environment-Specific URLs
+
+Once started, each environment is accessible at:
+
+**Development Environment:**
+- Frontend: http://localhost:13000
+- Backend API: http://localhost:18080
+- Swagger UI: http://localhost:18080/swagger/index.html
+- PostgreSQL: localhost:15432
+- RabbitMQ Management: http://localhost:15673
+
+**UAT Environment:**
+- Frontend: http://localhost:23000
+- Backend API: http://localhost:28080
+- Swagger UI: http://localhost:28080/swagger/index.html
+- PostgreSQL: localhost:25432
+- RabbitMQ Management: http://localhost:25673
+
+**Production Environment:**
+- Frontend: http://localhost:33000
+- Backend API: http://localhost:38080
+- Swagger UI: http://localhost:38080/swagger/index.html
+- PostgreSQL: localhost:35432
+- RabbitMQ Management: http://localhost:35673
+
+### Local Development with Docker Compose (Legacy)
 
 ```bash
 # Start all services
@@ -129,6 +207,24 @@ npm install
 npm run dev
 ```
 
+### Running Database Migrations
+
+```bash
+# Run migrations on development environment
+make migrate-dev-up
+
+# Run migrations on UAT environment
+make migrate-uat-up
+
+# Run migrations on production environment
+make migrate-prod-up
+
+# Rollback migrations on specific environment
+make migrate-dev-down
+make migrate-uat-down
+make migrate-prod-down
+```
+
 ### Running Tests
 
 ```bash
@@ -144,9 +240,12 @@ npm test
 ## API Documentation
 
 API documentation is available via Swagger UI at:
-- Local: http://localhost:8080/swagger/index.html
-- Production: https://api.axiom.example.com/swagger/index.html
-  (TODO: replace with the confirmed production base URL)
+- Development: http://localhost:18080/swagger/index.html
+- UAT: http://localhost:28080/swagger/index.html
+- Production: http://localhost:38080/swagger/index.html
+- Legacy/Local: http://localhost:8080/swagger/index.html
+
+TODO: Replace the production Swagger URL with the confirmed production base URL.
 
 ## Configuration
 
@@ -210,3 +309,8 @@ Detailed documentation is available in the `docs/` directory:
 - [Database Schema](docs/database-schema.md)
 - [Deployment Guide](docs/deployment.md)
 - [Development Workflow](docs/development-workflow.md)
+
+**Multi-Environment Setup:**
+- [Multi-Environment Setup Guide](docs/environments/multi-environment-setup.md)
+- [Quick Start Guide](docs/environments/multi-environment-quickstart.md)
+- [Port Reference](docs/environments/environment-port-reference.md)

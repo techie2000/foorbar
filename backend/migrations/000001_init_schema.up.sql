@@ -219,6 +219,161 @@ CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 
+-- Create standardized audit tables for each entity (following LEI audit pattern)
+
+-- Countries audit table
+CREATE TABLE IF NOT EXISTS countries_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    country_id UUID NOT NULL,
+    code VARCHAR(2) NOT NULL,
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_countries_audit_country_id ON countries_audit(country_id);
+CREATE INDEX idx_countries_audit_code ON countries_audit(code);
+CREATE INDEX idx_countries_audit_action ON countries_audit(action);
+CREATE INDEX idx_countries_audit_created_at ON countries_audit(created_at);
+
+-- Currencies audit table
+CREATE TABLE IF NOT EXISTS currencies_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    currency_id UUID NOT NULL,
+    code VARCHAR(3) NOT NULL,
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_currencies_audit_currency_id ON currencies_audit(currency_id);
+CREATE INDEX idx_currencies_audit_code ON currencies_audit(code);
+CREATE INDEX idx_currencies_audit_action ON currencies_audit(action);
+CREATE INDEX idx_currencies_audit_created_at ON currencies_audit(created_at);
+
+-- Addresses audit table
+CREATE TABLE IF NOT EXISTS addresses_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    address_id UUID NOT NULL,
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_addresses_audit_address_id ON addresses_audit(address_id);
+CREATE INDEX idx_addresses_audit_action ON addresses_audit(action);
+CREATE INDEX idx_addresses_audit_created_at ON addresses_audit(created_at);
+
+-- Entities audit table
+CREATE TABLE IF NOT EXISTS entities_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_id UUID NOT NULL,
+    registration_number VARCHAR(255),
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_entities_audit_entity_id ON entities_audit(entity_id);
+CREATE INDEX idx_entities_audit_registration_number ON entities_audit(registration_number);
+CREATE INDEX idx_entities_audit_action ON entities_audit(action);
+CREATE INDEX idx_entities_audit_created_at ON entities_audit(created_at);
+
+-- Entity addresses audit table
+CREATE TABLE IF NOT EXISTS entity_addresses_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_address_id UUID NOT NULL,
+    entity_id UUID NOT NULL,
+    address_id UUID NOT NULL,
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_entity_addresses_audit_entity_address_id ON entity_addresses_audit(entity_address_id);
+CREATE INDEX idx_entity_addresses_audit_entity_id ON entity_addresses_audit(entity_id);
+CREATE INDEX idx_entity_addresses_audit_address_id ON entity_addresses_audit(address_id);
+CREATE INDEX idx_entity_addresses_audit_action ON entity_addresses_audit(action);
+CREATE INDEX idx_entity_addresses_audit_created_at ON entity_addresses_audit(created_at);
+
+-- Instruments audit table
+CREATE TABLE IF NOT EXISTS instruments_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    instrument_id UUID NOT NULL,
+    name VARCHAR(255),
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_instruments_audit_instrument_id ON instruments_audit(instrument_id);
+CREATE INDEX idx_instruments_audit_action ON instruments_audit(action);
+CREATE INDEX idx_instruments_audit_created_at ON instruments_audit(created_at);
+
+-- Instrument codes audit table
+CREATE TABLE IF NOT EXISTS instrument_codes_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    instrument_code_id UUID NOT NULL,
+    instrument_id UUID NOT NULL,
+    code_type VARCHAR(50),
+    code_value VARCHAR(100),
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_instrument_codes_audit_instrument_code_id ON instrument_codes_audit(instrument_code_id);
+CREATE INDEX idx_instrument_codes_audit_instrument_id ON instrument_codes_audit(instrument_id);
+CREATE INDEX idx_instrument_codes_audit_action ON instrument_codes_audit(action);
+CREATE INDEX idx_instrument_codes_audit_created_at ON instrument_codes_audit(created_at);
+
+-- Accounts audit table
+CREATE TABLE IF NOT EXISTS accounts_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL,
+    account_number VARCHAR(255),
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_accounts_audit_account_id ON accounts_audit(account_id);
+CREATE INDEX idx_accounts_audit_account_number ON accounts_audit(account_number);
+CREATE INDEX idx_accounts_audit_action ON accounts_audit(action);
+CREATE INDEX idx_accounts_audit_created_at ON accounts_audit(created_at);
+
+-- SSIs audit table
+CREATE TABLE IF NOT EXISTS ssis_audit (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ssi_id UUID NOT NULL,
+    beneficiary_account VARCHAR(255),
+    action VARCHAR(20) NOT NULL,  -- CREATE, UPDATE, DELETE
+    record_snapshot JSONB NOT NULL,
+    changed_fields JSONB,
+    changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ssis_audit_ssi_id ON ssis_audit(ssi_id);
+CREATE INDEX idx_ssis_audit_action ON ssis_audit(action);
+CREATE INDEX idx_ssis_audit_created_at ON ssis_audit(created_at);
+
 -- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
