@@ -21,11 +21,11 @@ migrate -path ./migrations -database "postgres://user:password@localhost:5432/ax
 make migrate-up
 ```
 
-This creates the following tables:
-- `lei_records`
-- `lei_records_audit`
-- `source_files`
-- `file_processing_status`
+This creates the following tables in the `lei_raw` schema:
+- `lei_raw.lei_records`
+- `lei_raw.lei_records_audit`
+- `lei_raw.source_files`
+- `lei_raw.file_processing_status`
 
 ### 2. Verify Migration
 
@@ -33,20 +33,18 @@ Check that tables were created:
 
 ```sql
 \c axiom
-\dt lei*
-\dt source_files
-\dt file_processing_status
+\dt lei_raw.*
 ```
 
 Expected output:
 ```text
              List of relations
- Schema |         Name          | Type  | Owner
---------+-----------------------+-------+-------
- public | file_processing_status| table | axiom
- public | lei_records           | table | axiom
- public | lei_records_audit     | table | axiom
- public | source_files          | table | axiom
+  Schema  |         Name          | Type  | Owner
+----------+-----------------------+-------+-------
+ lei_raw  | file_processing_status| table | axiom
+ lei_raw  | lei_records           | table | axiom
+ lei_raw  | lei_records_audit     | table | axiom
+ lei_raw  | source_files          | table | axiom
 ```
 
 ### 3. Start the Application
@@ -105,7 +103,7 @@ Response:
   "last_run_at": "2026-02-10T14:30:00Z",
   "current_source_file": {
     "id": "...",
-    "file_name": "lei-FULL-20260210-143000.xml.zip",
+    "file_name": "lei-FULL-20260210-143000.json.zip",
     "processing_status": "IN_PROGRESS",
     "total_records": 2500000,
     "processed_records": 150000,

@@ -75,7 +75,7 @@ type LEIRecord struct {
 
 // TableName overrides the table name
 func (LEIRecord) TableName() string {
-	return "lei_records"
+	return "lei_raw.lei_records"
 }
 
 // LEIRecordAudit represents the complete audit history of LEI record changes
@@ -100,7 +100,7 @@ type LEIRecordAudit struct {
 
 // TableName overrides the table name
 func (LEIRecordAudit) TableName() string {
-	return "lei_records_audit"
+	return "lei_raw.lei_records_audit"
 }
 
 // SourceFile represents metadata about downloaded GLEIF files
@@ -132,7 +132,7 @@ type SourceFile struct {
 
 // TableName overrides the table name
 func (SourceFile) TableName() string {
-	return "source_files"
+	return "lei_raw.source_files"
 }
 
 // FileProcessingStatus represents the overall status of file processing jobs
@@ -155,7 +155,7 @@ type FileProcessingStatus struct {
 
 // TableName overrides the table name
 func (FileProcessingStatus) TableName() string {
-	return "file_processing_status"
+	return "lei_raw.file_processing_status"
 }
 
 // LEIChangeDetection represents changes detected between old and new LEI records

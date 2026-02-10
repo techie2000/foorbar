@@ -2,9 +2,10 @@ package service
 
 import (
 	"archive/zip"
+	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/xml"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,9 +21,9 @@ import (
 
 // GLEIF URLs for downloading LEI data
 const (
-	// Level 1 data (who is who) - full file published daily
-	GLEIFLevel1FullXMLURL = "https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2/latest/download"
-	GLEIFLevel1DeltaXMLURL = "https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-delta/latest/download"
+	// Level 1 data (who is who) - full file published daily (JSON format)
+	GLEIFLevel1FullJSONURL = "https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-json/latest/download"
+	GLEIFLevel1DeltaJSONURL = "https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-delta-json/latest/download"
 )
 
 // LEIService interface
@@ -65,12 +66,12 @@ func NewLEIService(repo repository.LEIRepository, dataDir string) LEIService {
 
 // DownloadFullFile downloads the full LEI data file from GLEIF
 func (s *leiService) DownloadFullFile() (*domain.SourceFile, error) {
-	return s.downloadFile(GLEIFLevel1FullXMLURL, "FULL")
+	return s.downloadFile(GLEIFLevel1FullJSONURL, "FULL")
 }
 
 // DownloadDeltaFile downloads the delta LEI data file from GLEIF
 func (s *leiService) DownloadDeltaFile() (*domain.SourceFile, error) {
-	return s.downloadFile(GLEIFLevel1DeltaXMLURL, "DELTA")
+	return s.downloadFile(GLEIFLevel1DeltaJSONURL, "DELTA")
 }
 
 // downloadFile downloads a file from GLEIF and creates a SourceFile record
@@ -95,7 +96,7 @@ func (s *leiService) downloadFile(url, fileType string) (*domain.SourceFile, err
 	
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102-150405")
-	fileName := fmt.Sprintf("lei-%s-%s.xml.zip", fileType, timestamp)
+	fileName := fmt.Sprintf("lei-%s-%s.json.zip", fileType, timestamp)
 	filePath := filepath.Join(s.dataDir, fileName)
 	
 	// Create file
@@ -169,21 +170,21 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	filePath := filepath.Join(s.dataDir, sourceFile.FileName)
 	
 	// Unzip file
-	xmlPath, err := s.extractZipFile(filePath)
+	jsonPath, err := s.extractZipFile(filePath)
 	if err != nil {
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
 		s.repo.UpdateSourceFile(sourceFile)
 		return fmt.Errorf("failed to extract file: %w", err)
 	}
-	defer os.Remove(xmlPath) // Clean up extracted XML
+	defer os.Remove(jsonPath) // Clean up extracted JSON
 	
-	// Parse and process XML
-	if err := s.processXMLFile(xmlPath, sourceFile, resumeFromLEI); err != nil {
+	// Parse and process JSON
+	if err := s.processJSONFile(jsonPath, sourceFile, resumeFromLEI); err != nil {
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
 		s.repo.UpdateSourceFile(sourceFile)
-		return fmt.Errorf("failed to process XML file: %w", err)
+		return fmt.Errorf("failed to process JSON file: %w", err)
 	}
 	
 	// Update status to COMPLETED
@@ -204,7 +205,7 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	return nil
 }
 
-// extractZipFile extracts the XML file from a ZIP archive
+// extractZipFile extracts the JSON file from a ZIP archive
 func (s *leiService) extractZipFile(zipPath string) (string, error) {
 	r, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -212,9 +213,9 @@ func (s *leiService) extractZipFile(zipPath string) (string, error) {
 	}
 	defer r.Close()
 	
-	// Find the XML file in the ZIP
+	// Find the JSON file in the ZIP
 	for _, f := range r.File {
-		if filepath.Ext(f.Name) == ".xml" {
+		if filepath.Ext(f.Name) == ".json" || filepath.Ext(f.Name) == ".jsonl" {
 			rc, err := f.Open()
 			if err != nil {
 				return "", err
@@ -222,8 +223,8 @@ func (s *leiService) extractZipFile(zipPath string) (string, error) {
 			defer rc.Close()
 			
 			// Create output file
-			xmlPath := zipPath + ".extracted.xml"
-			outFile, err := os.Create(xmlPath)
+			jsonPath := zipPath + ".extracted.json"
+			outFile, err := os.Create(jsonPath)
 			if err != nil {
 				return "", err
 			}
@@ -235,87 +236,87 @@ func (s *leiService) extractZipFile(zipPath string) (string, error) {
 				return "", err
 			}
 			
-			return xmlPath, nil
+			return jsonPath, nil
 		}
 	}
 	
-	return "", fmt.Errorf("no XML file found in ZIP archive")
+	return "", fmt.Errorf("no JSON file found in ZIP archive")
 }
 
-// processXMLFile parses and processes the LEI XML file
-func (s *leiService) processXMLFile(xmlPath string, sourceFile *domain.SourceFile, resumeFromLEI string) error {
-	file, err := os.Open(xmlPath)
+// processJSONFile parses and processes the LEI JSON file
+// GLEIF JSON format is typically JSON Lines (one JSON object per line)
+func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceFile, resumeFromLEI string) error {
+	file, err := os.Open(jsonPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 	
-	decoder := xml.NewDecoder(file)
+	scanner := bufio.NewScanner(file)
+	// Increase buffer size for large JSON lines
+	buf := make([]byte, 0, 1024*1024) // 1MB buffer
+	scanner.Buffer(buf, 10*1024*1024) // 10MB max token size
 	
 	var totalRecords int
 	var processedRecords int
 	var failedRecords int
 	var shouldProcess bool = (resumeFromLEI == "")
 	
-	// Process XML elements
-	for {
-		token, err := decoder.Token()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("XML parsing error: %w", err)
+	// Process JSON lines (JSON Lines format - one record per line)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
 		}
 		
-		switch se := token.(type) {
-		case xml.StartElement:
-			if se.Name.Local == "LEIRecord" {
-				totalRecords++
-				
-				var xmlRecord LEIXMLRecord
-				if err := decoder.DecodeElement(&xmlRecord, &se); err != nil {
-					log.Error().Err(err).Msg("Failed to decode LEI record")
-					failedRecords++
-					continue
-				}
-				
-				// Check if we should start processing (resume logic)
-				if !shouldProcess {
-					if xmlRecord.LEI == resumeFromLEI {
-						shouldProcess = true
-					} else {
-						continue
-					}
-				}
-				
-				// Convert XML record to domain model
-				record := s.xmlToDomainRecord(&xmlRecord, sourceFile.ID)
-				
-				// Upsert record (handles change detection)
-				if _, err := s.repo.UpsertLEIRecord(record); err != nil {
-					log.Error().Err(err).Str("lei", record.LEI).Msg("Failed to upsert LEI record")
-					failedRecords++
-				} else {
-					processedRecords++
-				}
-				
-				// Update progress every 1000 records
-				if processedRecords%1000 == 0 {
-					sourceFile.TotalRecords = totalRecords
-					sourceFile.ProcessedRecords = processedRecords
-					sourceFile.FailedRecords = failedRecords
-					sourceFile.LastProcessedLEI = record.LEI
-					s.repo.UpdateSourceFile(sourceFile)
-					
-					log.Info().
-						Int("total", totalRecords).
-						Int("processed", processedRecords).
-						Int("failed", failedRecords).
-						Str("last_lei", record.LEI).
-						Msg("Processing progress")
-				}
+		totalRecords++
+		
+		var jsonRecord LEIJSONRecord
+		if err := json.Unmarshal(line, &jsonRecord); err != nil {
+			log.Error().Err(err).Msg("Failed to decode LEI JSON record")
+			failedRecords++
+			continue
+		}
+		
+		// Check if we should start processing (resume logic)
+		if !shouldProcess {
+			if jsonRecord.LEI == resumeFromLEI {
+				shouldProcess = true
+			} else {
+				continue
 			}
 		}
+		
+		// Convert JSON record to domain model
+		record := s.jsonToDomainRecord(&jsonRecord, sourceFile.ID)
+		
+		// Upsert record (handles change detection)
+		if _, err := s.repo.UpsertLEIRecord(record); err != nil {
+			log.Error().Err(err).Str("lei", record.LEI).Msg("Failed to upsert LEI record")
+			failedRecords++
+		} else {
+			processedRecords++
+		}
+		
+		// Update progress every 1000 records
+		if processedRecords%1000 == 0 {
+			sourceFile.TotalRecords = totalRecords
+			sourceFile.ProcessedRecords = processedRecords
+			sourceFile.FailedRecords = failedRecords
+			sourceFile.LastProcessedLEI = record.LEI
+			s.repo.UpdateSourceFile(sourceFile)
+			
+			log.Info().
+				Int("total", totalRecords).
+				Int("processed", processedRecords).
+				Int("failed", failedRecords).
+				Str("last_lei", record.LEI).
+				Msg("Processing progress")
+		}
+	}
+	
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading JSON file: %w", err)
 	}
 	
 	// Final update
@@ -326,57 +327,132 @@ func (s *leiService) processXMLFile(xmlPath string, sourceFile *domain.SourceFil
 	return nil
 }
 
-// LEIXMLRecord represents the XML structure from GLEIF
-// This is a simplified version - actual GLEIF XML is more complex
-type LEIXMLRecord struct {
-	LEI                     string    `xml:"LEI"`
-	LegalName               string    `xml:"Entity>LegalName"`
-	LegalAddressLine1       string    `xml:"Entity>LegalAddress>Line1"`
-	LegalAddressLine2       string    `xml:"Entity>LegalAddress>Line2"`
-	LegalAddressCity        string    `xml:"Entity>LegalAddress>City"`
-	LegalAddressRegion      string    `xml:"Entity>LegalAddress>Region"`
-	LegalAddressCountry     string    `xml:"Entity>LegalAddress>Country"`
-	LegalAddressPostalCode  string    `xml:"Entity>LegalAddress>PostalCode"`
-	RegistrationAuthority   string    `xml:"Entity>RegistrationAuthority"`
-	RegistrationNumber      string    `xml:"Entity>RegistrationNumber"`
-	EntityCategory          string    `xml:"Entity>EntityCategory"`
-	EntityStatus            string    `xml:"Registration>RegistrationStatus"`
-	InitialRegistrationDate string    `xml:"Registration>InitialRegistrationDate"`
-	LastUpdateDate          string    `xml:"Registration>LastUpdateDate"`
-	NextRenewalDate         string    `xml:"Registration>NextRenewalDate"`
+// LEIJSONRecord represents the JSON structure from GLEIF
+// Based on GLEIF Level 1 JSON format
+type LEIJSONRecord struct {
+	LEI                     string                  `json:"LEI"`
+	Entity                  LEIEntity               `json:"Entity"`
+	Registration            LEIRegistration         `json:"Registration"`
 }
 
-// xmlToDomainRecord converts an XML record to a domain.LEIRecord
-func (s *leiService) xmlToDomainRecord(xmlRecord *LEIXMLRecord, sourceFileID uuid.UUID) *domain.LEIRecord {
+type LEIEntity struct {
+	LegalName               LEILegalName            `json:"LegalName"`
+	OtherNames              []LEIOtherName          `json:"OtherEntityNames"`
+	TransliteratedOtherNames []LEIOtherName         `json:"TransliteratedOtherEntityNames"`
+	LegalAddress            LEIAddress              `json:"LegalAddress"`
+	HeadquartersAddress     LEIAddress              `json:"HeadquartersAddress"`
+	RegistrationAuthority   LEIRegistrationAuthority `json:"RegistrationAuthority"`
+	LegalJurisdiction       string                  `json:"LegalJurisdiction"`
+	EntityCategory          string                  `json:"EntityCategory"`
+	LegalForm               LEILegalForm            `json:"LegalForm"`
+	EntityStatus            string                  `json:"EntityStatus"`
+}
+
+type LEILegalName struct {
+	Value                   string                  `json:"$"`
+	Language                string                  `json:"@xml:lang"`
+}
+
+type LEIOtherName struct {
+	Value                   string                  `json:"$"`
+	Type                    string                  `json:"@type"`
+}
+
+type LEIAddress struct {
+	FirstAddressLine        string                  `json:"FirstAddressLine"`
+	AdditionalAddressLine   []string                `json:"AdditionalAddressLine"`
+	City                    string                  `json:"City"`
+	Region                  string                  `json:"Region"`
+	Country                 string                  `json:"Country"`
+	PostalCode              string                  `json:"PostalCode"`
+}
+
+type LEIRegistrationAuthority struct {
+	RegistrationAuthorityID string                  `json:"RegistrationAuthorityID"`
+	RegistrationAuthorityEntityID string            `json:"RegistrationAuthorityEntityID"`
+}
+
+type LEILegalForm struct {
+	EntityLegalFormCode     string                  `json:"EntityLegalFormCode"`
+}
+
+type LEIRegistration struct {
+	InitialRegistrationDate string                  `json:"InitialRegistrationDate"`
+	LastUpdateDate          string                  `json:"LastUpdateDate"`
+	RegistrationStatus      string                  `json:"RegistrationStatus"`
+	NextRenewalDate         string                  `json:"NextRenewalDate"`
+	ManagingLOU             string                  `json:"ManagingLOU"`
+	ValidationSources       string                  `json:"ValidationSources"`
+}
+
+// jsonToDomainRecord converts a JSON record to a domain.LEIRecord
+func (s *leiService) jsonToDomainRecord(jsonRecord *LEIJSONRecord, sourceFileID uuid.UUID) *domain.LEIRecord {
 	record := &domain.LEIRecord{
-		LEI:                   xmlRecord.LEI,
-		LegalName:             xmlRecord.LegalName,
-		LegalAddressLine1:     xmlRecord.LegalAddressLine1,
-		LegalAddressLine2:     xmlRecord.LegalAddressLine2,
-		LegalAddressCity:      xmlRecord.LegalAddressCity,
-		LegalAddressRegion:    xmlRecord.LegalAddressRegion,
-		LegalAddressCountry:   xmlRecord.LegalAddressCountry,
-		LegalAddressPostalCode: xmlRecord.LegalAddressPostalCode,
-		RegistrationAuthority: xmlRecord.RegistrationAuthority,
-		RegistrationNumber:    xmlRecord.RegistrationNumber,
-		EntityCategory:        xmlRecord.EntityCategory,
-		EntityStatus:          xmlRecord.EntityStatus,
+		LEI:                   jsonRecord.LEI,
+		LegalName:             jsonRecord.Entity.LegalName.Value,
+		LegalAddressLine1:     jsonRecord.Entity.LegalAddress.FirstAddressLine,
+		LegalAddressCity:      jsonRecord.Entity.LegalAddress.City,
+		LegalAddressRegion:    jsonRecord.Entity.LegalAddress.Region,
+		LegalAddressCountry:   jsonRecord.Entity.LegalAddress.Country,
+		LegalAddressPostalCode: jsonRecord.Entity.LegalAddress.PostalCode,
+		RegistrationAuthority: jsonRecord.Entity.RegistrationAuthority.RegistrationAuthorityID,
+		RegistrationNumber:    jsonRecord.Entity.RegistrationAuthority.RegistrationAuthorityEntityID,
+		EntityCategory:        jsonRecord.Entity.EntityCategory,
+		EntityLegalForm:       jsonRecord.Entity.LegalForm.EntityLegalFormCode,
+		EntityStatus:          jsonRecord.Registration.RegistrationStatus,
+		ManagingLOU:           jsonRecord.Registration.ManagingLOU,
 		SourceFileID:          &sourceFileID,
 	}
 	
-	// Parse dates
-	if xmlRecord.InitialRegistrationDate != "" {
-		if t, err := time.Parse("2006-01-02", xmlRecord.InitialRegistrationDate); err == nil {
+	// Handle additional address lines
+	if len(jsonRecord.Entity.LegalAddress.AdditionalAddressLine) > 0 {
+		record.LegalAddressLine2 = jsonRecord.Entity.LegalAddress.AdditionalAddressLine[0]
+	}
+	if len(jsonRecord.Entity.LegalAddress.AdditionalAddressLine) > 1 {
+		record.LegalAddressLine3 = jsonRecord.Entity.LegalAddress.AdditionalAddressLine[1]
+	}
+	if len(jsonRecord.Entity.LegalAddress.AdditionalAddressLine) > 2 {
+		record.LegalAddressLine4 = jsonRecord.Entity.LegalAddress.AdditionalAddressLine[2]
+	}
+	
+	// Handle headquarters address
+	if jsonRecord.Entity.HeadquartersAddress.FirstAddressLine != "" {
+		record.HQAddressLine1 = jsonRecord.Entity.HeadquartersAddress.FirstAddressLine
+		record.HQAddressCity = jsonRecord.Entity.HeadquartersAddress.City
+		record.HQAddressRegion = jsonRecord.Entity.HeadquartersAddress.Region
+		record.HQAddressCountry = jsonRecord.Entity.HeadquartersAddress.Country
+		record.HQAddressPostalCode = jsonRecord.Entity.HeadquartersAddress.PostalCode
+		
+		if len(jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine) > 0 {
+			record.HQAddressLine2 = jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine[0]
+		}
+		if len(jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine) > 1 {
+			record.HQAddressLine3 = jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine[1]
+		}
+		if len(jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine) > 2 {
+			record.HQAddressLine4 = jsonRecord.Entity.HeadquartersAddress.AdditionalAddressLine[2]
+		}
+	}
+	
+	// Parse dates (ISO 8601 format)
+	if jsonRecord.Registration.InitialRegistrationDate != "" {
+		if t, err := time.Parse("2006-01-02T15:04:05Z", jsonRecord.Registration.InitialRegistrationDate); err == nil {
+			record.InitialRegistrationDate = t
+		} else if t, err := time.Parse("2006-01-02", jsonRecord.Registration.InitialRegistrationDate); err == nil {
 			record.InitialRegistrationDate = t
 		}
 	}
-	if xmlRecord.LastUpdateDate != "" {
-		if t, err := time.Parse("2006-01-02", xmlRecord.LastUpdateDate); err == nil {
+	if jsonRecord.Registration.LastUpdateDate != "" {
+		if t, err := time.Parse("2006-01-02T15:04:05Z", jsonRecord.Registration.LastUpdateDate); err == nil {
+			record.LastUpdateDate = t
+		} else if t, err := time.Parse("2006-01-02", jsonRecord.Registration.LastUpdateDate); err == nil {
 			record.LastUpdateDate = t
 		}
 	}
-	if xmlRecord.NextRenewalDate != "" {
-		if t, err := time.Parse("2006-01-02", xmlRecord.NextRenewalDate); err == nil {
+	if jsonRecord.Registration.NextRenewalDate != "" {
+		if t, err := time.Parse("2006-01-02T15:04:05Z", jsonRecord.Registration.NextRenewalDate); err == nil {
+			record.NextRenewalDate = t
+		} else if t, err := time.Parse("2006-01-02", jsonRecord.Registration.NextRenewalDate); err == nil {
 			record.NextRenewalDate = t
 		}
 	}

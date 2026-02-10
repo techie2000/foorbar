@@ -32,7 +32,7 @@ processes Legal Entity Identifier (LEI) data from GLEIF (Global Legal Entity Ide
 
 3. **Service Layer** (`internal/service/lei_service.go`)
    - File download from GLEIF
-   - XML parsing and processing
+   - JSON parsing and processing (JSON Lines format)
    - Change detection logic
    - Resume-from-LEI functionality
 
@@ -48,9 +48,12 @@ processes Legal Entity Identifier (LEI) data from GLEIF (Global Legal Entity Ide
 
 ## Database Schema
 
+**Important**: All LEI tables are created in a separate `lei_raw` schema to keep raw GLEIF data distinct from
+master data for easier permission management.
+
 ### Tables
 
-#### `lei_records`
+#### `lei_raw.lei_records`
 Main table storing raw LEI data from GLEIF.
 
 Key fields:
@@ -65,7 +68,7 @@ Key fields:
 - `created_by`, `updated_by`: System user tracking
 - `created_at`, `updated_at`: Timestamps
 
-#### `lei_records_audit`
+#### `lei_raw.lei_records_audit`
 Complete audit history of all LEI record changes.
 
 Key fields:
@@ -78,7 +81,7 @@ Key fields:
 - `changed_by`: System user who made the change
 - `created_at`: When the change occurred
 
-#### `source_files`
+#### `lei_raw.source_files`
 Tracks downloaded files and their processing status.
 
 Key fields:
@@ -91,7 +94,7 @@ Key fields:
 - `last_processed_lei`: For resume capability
 - `processing_error`: Error details if failed
 
-#### `file_processing_status`
+#### `lei_raw.file_processing_status`
 Overall status of scheduled jobs.
 
 Key fields:
@@ -192,13 +195,13 @@ Response:
 
 ### Delta Sync
 - **Frequency**: Every hour
-- **Source**: GLEIF Level 1 Delta files
+- **Source**: GLEIF Level 1 Delta files (JSON format)
 - **Purpose**: Capture incremental changes
 - **Runs immediately on startup**, then hourly
 
 ### Full Sync
 - **Frequency**: Weekly (Sunday at 2:00 AM)
-- **Source**: GLEIF Level 1 Full files
+- **Source**: GLEIF Level 1 Full files (JSON format)
 - **Purpose**: Complete refresh of all data
 - **First run**: Calculated to next Sunday at 2 AM
 
@@ -213,7 +216,7 @@ Response:
 2. **Processing Phase**
    - File status updated to IN_PROGRESS
    - ZIP archive extracted to temporary location
-   - XML parsed and processed record by record
+   - JSON file parsed and processed line by line (JSON Lines format)
    - For each record:
      - Check if LEI already exists
      - If new: Create record and audit entry (CREATE)

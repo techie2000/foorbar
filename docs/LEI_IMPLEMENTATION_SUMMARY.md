@@ -26,13 +26,14 @@ Created comprehensive domain models:
 ### 2. Database Schema (6,838 characters)
 **File**: `backend/migrations/000002_create_lei_schema.up.sql`
 
-Created four new tables:
-- `lei_records`: Main table with 30+ columns, unique LEI constraint, 8 indexes
-- `lei_records_audit`: Audit history with JSONB snapshot storage
-- `source_files`: File tracking with processing status and progress
-- `file_processing_status`: Scheduler job tracking
+Created four new tables in the `lei_raw` schema:
+- `lei_raw.lei_records`: Main table with 30+ columns, unique LEI constraint, 8 indexes
+- `lei_raw.lei_records_audit`: Audit history with JSONB snapshot storage
+- `lei_raw.source_files`: File tracking with processing status and progress
+- `lei_raw.file_processing_status`: Scheduler job tracking
 
 Special features:
+- **Separate Schema**: `lei_raw` schema isolates raw GLEIF data from master data for permission management
 - Proper foreign key relationships (source_files → lei_records → lei_records_audit)
 - JSONB columns for flexible data storage (other_names, validation_sources, changed_fields)
 - Automatic timestamp updates via triggers
@@ -56,14 +57,14 @@ Key feature: `UpsertLEIRecord` only creates audit entries when actual data chang
 
 Built complete service layer with:
 - **File Download**: Downloads full and delta files from GLEIF with integrity checking (SHA-256)
-- **XML Processing**: Parses and processes GLEIF XML files with streaming for memory efficiency
+- **JSON Processing**: Parses and processes GLEIF JSON files with streaming for memory efficiency
 - **Change Detection**: Only records updates when data actually changes
 - **Resume Capability**: Can resume processing from last processed LEI if interrupted
 - **Progress Tracking**: Saves progress every 1000 records
 
 GLEIF Integration:
-- Full file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2/latest/download`
-- Delta file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-delta/latest/download`
+- Full file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-json/latest/download`
+- Delta file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-delta-json/latest/download`
 
 ### 5. Scheduler Service (7,243 characters)
 **File**: `backend/internal/service/scheduler_service.go`
@@ -187,7 +188,7 @@ curl http://localhost:8080/api/v1/lei/status/DAILY_FULL \
 
 ## Performance Considerations
 
-- **Streaming XML Parser**: Doesn't load entire file into memory
+- **Streaming JSON Parser**: Doesn't load entire file into memory
 - **Batch Processing**: Commits records in batches for efficiency
 - **Index Optimization**: 8 indexes on lei_records for fast queries
 - **JSONB Storage**: Efficient storage and querying of JSON data
@@ -196,15 +197,15 @@ curl http://localhost:8080/api/v1/lei/status/DAILY_FULL \
 
 ## Known Limitations
 
-1. **XML Parsing**: Simplified XML structure assumed (actual GLEIF XML is more complex)
+1. **JSON Parsing**: Simplified JSON structure assumed (actual GLEIF JSON is more complex)
 2. **Retry Logic**: Manual retry required for failed downloads
 3. **Concurrency**: Single-threaded processing (one file at a time)
-4. **Validation**: Basic XML parsing, no schema validation
+4. **Validation**: Basic JSON parsing, no schema validation
 5. **Level 2 Data**: Only Level 1 (who is who) data implemented
 
 ## Future Enhancements
 
-- [ ] Implement complete GLEIF XML schema parsing
+- [ ] Implement complete GLEIF JSON schema parsing
 - [ ] Add Level 2 relationship data support
 - [ ] Implement automatic retry with exponential backoff
 - [ ] Add parallel processing for large files
