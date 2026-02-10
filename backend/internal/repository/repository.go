@@ -13,6 +13,7 @@ type Repositories struct {
 	Instrument InstrumentRepository
 	Account    AccountRepository
 	SSI        SSIRepository
+	LEI        LEIRepository
 }
 
 // NewRepositories creates a new repositories instance
@@ -24,6 +25,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Instrument: NewInstrumentRepository(db),
 		Account:    NewAccountRepository(db),
 		SSI:        NewSSIRepository(db),
+		LEI:        NewLEIRepository(db),
 	}
 }
 

@@ -63,11 +63,26 @@ func main() {
 	// Initialize repositories
 	repos := repository.NewRepositories(db)
 
+	// LEI data directory
+	leiDataDir := "./data/lei"
+	if err := os.MkdirAll(leiDataDir, 0755); err != nil {
+		log.Fatalf("Failed to create LEI data directory: %v", err)
+	}
+
 	// Initialize services
-	services := service.NewServices(repos)
+	services := service.NewServices(repos, leiDataDir)
+
+	// Initialize scheduler service for LEI data acquisition
+	schedulerService := service.NewSchedulerService(services.LEI)
+	
+	// Start scheduler
+	if err := schedulerService.Start(); err != nil {
+		log.Fatalf("Failed to start scheduler: %v", err)
+	}
+	defer schedulerService.Stop()
 
 	// Initialize handlers
-	handlers := handler.NewHandlers(services)
+	handlers := handler.NewHandlers(services, schedulerService)
 
 	// Setup Gin router
 	router := setupRouter(cfg, handlers)
@@ -224,6 +239,19 @@ func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 				ssis.POST("", h.SSI.Create)
 				ssis.PUT("/:id", h.SSI.Update)
 				ssis.DELETE("/:id", h.SSI.Delete)
+			}
+
+			// LEI routes
+			lei := protected.Group("/lei")
+			{
+				lei.GET("", h.LEI.ListLEI)
+				lei.GET("/:lei", h.LEI.GetLEIByCode)
+				lei.GET("/record/:id", h.LEI.GetLEIByID)
+				lei.GET("/:lei/audit", h.LEI.GetAuditHistory)
+				lei.POST("/sync/full", h.LEI.TriggerFullSync)
+				lei.POST("/sync/delta", h.LEI.TriggerDeltaSync)
+				lei.GET("/status/:jobType", h.LEI.GetProcessingStatus)
+				lei.POST("/source-file/:id/resume", h.LEI.ResumeProcessing)
 			}
 
 			// Data acquisition routes
