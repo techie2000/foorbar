@@ -1,4 +1,6 @@
 .PHONY: help build run test clean migrate-up migrate-down docker-up docker-down
+.PHONY: docker-dev-up docker-dev-down docker-uat-up docker-uat-down docker-prod-up docker-prod-down
+.PHONY: docker-all-up docker-all-down docker-all-status
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -24,26 +26,113 @@ clean: ## Clean build artifacts
 	rm -rf backend/tmp
 	rm -f backend/coverage.out backend/coverage.html
 
-docker-up: ## Start all services with Docker Compose
+docker-up: ## Start all services with Docker Compose (default/legacy)
 	docker-compose up -d
 
-docker-down: ## Stop all services
+docker-down: ## Stop all services (default/legacy)
 	docker-compose down
 
-docker-logs: ## Show logs from all services
+docker-logs: ## Show logs from all services (default/legacy)
 	docker-compose logs -f
+
+# Development environment
+docker-dev-up: ## Start development environment (ports: 18080, 13000, 15432)
+	docker-compose --env-file .env.dev -f docker-compose.dev.yml up -d
+
+docker-dev-down: ## Stop development environment
+	docker-compose --env-file .env.dev -f docker-compose.dev.yml down
+
+docker-dev-logs: ## Show logs from development environment
+	docker-compose --env-file .env.dev -f docker-compose.dev.yml logs -f
+
+docker-dev-restart: ## Restart development environment
+	docker-compose --env-file .env.dev -f docker-compose.dev.yml restart
+
+# UAT environment
+docker-uat-up: ## Start UAT environment (ports: 28080, 23000, 25432)
+	docker-compose --env-file .env.uat -f docker-compose.uat.yml up -d
+
+docker-uat-down: ## Stop UAT environment
+	docker-compose --env-file .env.uat -f docker-compose.uat.yml down
+
+docker-uat-logs: ## Show logs from UAT environment
+	docker-compose --env-file .env.uat -f docker-compose.uat.yml logs -f
+
+docker-uat-restart: ## Restart UAT environment
+	docker-compose --env-file .env.uat -f docker-compose.uat.yml restart
+
+# Production environment
+docker-prod-up: ## Start production environment (ports: 38080, 33000, 35432)
+	docker-compose --env-file .env.prod -f docker-compose.prod.yml up -d
+
+docker-prod-down: ## Stop production environment
+	docker-compose --env-file .env.prod -f docker-compose.prod.yml down
+
+docker-prod-logs: ## Show logs from production environment
+	docker-compose --env-file .env.prod -f docker-compose.prod.yml logs -f
+
+docker-prod-restart: ## Restart production environment
+	docker-compose --env-file .env.prod -f docker-compose.prod.yml restart
+
+# All environments
+docker-all-up: ## Start all environments (dev, uat, prod)
+	@echo "Starting development environment..."
+	@$(MAKE) docker-dev-up
+	@echo "Starting UAT environment..."
+	@$(MAKE) docker-uat-up
+	@echo "Starting production environment..."
+	@$(MAKE) docker-prod-up
+	@echo "All environments started!"
+
+docker-all-down: ## Stop all environments
+	@echo "Stopping development environment..."
+	@$(MAKE) docker-dev-down
+	@echo "Stopping UAT environment..."
+	@$(MAKE) docker-uat-down
+	@echo "Stopping production environment..."
+	@$(MAKE) docker-prod-down
+	@echo "All environments stopped!"
+
+docker-all-status: ## Show status of all environments
+	@echo "=== Development Environment ==="
+	@docker-compose --env-file .env.dev -f docker-compose.dev.yml ps || true
+	@echo ""
+	@echo "=== UAT Environment ==="
+	@docker-compose --env-file .env.uat -f docker-compose.uat.yml ps || true
+	@echo ""
+	@echo "=== Production Environment ==="
+	@docker-compose --env-file .env.prod -f docker-compose.prod.yml ps || true
 
 migrate-create: ## Create a new migration (usage: make migrate-create name=create_users_table)
 	migrate create -ext sql -dir backend/migrations -seq $(name)
 
-migrate-up: ## Run database migrations
+migrate-up: ## Run database migrations (default/dev)
 	migrate -path backend/migrations -database "postgresql://axiom:axiom@localhost:5432/axiom?sslmode=disable" up
 
-migrate-down: ## Rollback database migrations
+migrate-down: ## Rollback database migrations (default/dev)
 	migrate -path backend/migrations -database "postgresql://axiom:axiom@localhost:5432/axiom?sslmode=disable" down
 
 migrate-force: ## Force migration version (usage: make migrate-force version=1)
 	migrate -path backend/migrations -database "postgresql://axiom:axiom@localhost:5432/axiom?sslmode=disable" force $(version)
+
+# Environment-specific migrations
+migrate-dev-up: ## Run migrations on development database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_dev_pass@localhost:15432/axiom_dev?sslmode=disable" up
+
+migrate-dev-down: ## Rollback migrations on development database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_dev_pass@localhost:15432/axiom_dev?sslmode=disable" down
+
+migrate-uat-up: ## Run migrations on UAT database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_uat_pass@localhost:25432/axiom_uat?sslmode=disable" up
+
+migrate-uat-down: ## Rollback migrations on UAT database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_uat_pass@localhost:25432/axiom_uat?sslmode=disable" down
+
+migrate-prod-up: ## Run migrations on production database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_prod_pass@localhost:35432/axiom_prod?sslmode=disable" up
+
+migrate-prod-down: ## Rollback migrations on production database
+	migrate -path backend/migrations -database "postgresql://axiom:axiom_prod_pass@localhost:35432/axiom_prod?sslmode=disable" down
 
 swagger: ## Generate Swagger documentation
 	cd backend && swag init -g cmd/api/main.go -o docs

@@ -31,7 +31,11 @@ go.work
 .env
 .env.local
 .env.*.local
-*.env
+
+# Allow environment-specific config files for multi-environment support
+!.env.dev
+!.env.uat
+!.env.prod
 
 # Logs
 *.log
