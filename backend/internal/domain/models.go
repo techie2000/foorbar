@@ -84,21 +84,21 @@ func (Address) TableName() string {
 type EntityType string
 
 const (
-	EntityTypeCompany      EntityType = "COMPANY"
-	EntityTypeBusiness     EntityType = "BUSINESS"
-	EntityTypeCorporation  EntityType = "CORPORATION"
-	EntityTypePartnership  EntityType = "PARTNERSHIP"
-	EntityTypeIndividual   EntityType = "INDIVIDUAL"
+	EntityTypeCompany     EntityType = "COMPANY"
+	EntityTypeBusiness    EntityType = "BUSINESS"
+	EntityTypeCorporation EntityType = "CORPORATION"
+	EntityTypePartnership EntityType = "PARTNERSHIP"
+	EntityTypeIndividual  EntityType = "INDIVIDUAL"
 )
 
 // Entity represents a business entity (company, individual, etc.)
 type Entity struct {
 	BaseModel
-	Name               string           `gorm:"not null" json:"name" validate:"required"`
-	RegistrationNumber string           `gorm:"uniqueIndex" json:"registration_number"`
-	Type               EntityType       `gorm:"type:varchar(50)" json:"type"`
-	Addresses          []EntityAddress  `gorm:"foreignKey:EntityID" json:"addresses,omitempty"`
-	Active             bool             `gorm:"default:true" json:"active"`
+	Name               string          `gorm:"not null" json:"name" validate:"required"`
+	RegistrationNumber string          `gorm:"uniqueIndex" json:"registration_number"`
+	Type               EntityType      `gorm:"type:varchar(50)" json:"type"`
+	Addresses          []EntityAddress `gorm:"foreignKey:EntityID" json:"addresses,omitempty"`
+	Active             bool            `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
@@ -109,12 +109,12 @@ func (Entity) TableName() string {
 // EntityAddress represents the many-to-many relationship between entities and addresses
 type EntityAddress struct {
 	BaseModel
-	EntityID    uuid.UUID  `gorm:"type:uuid;not null" json:"entity_id"`
-	Entity      *Entity    `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
-	AddressID   uuid.UUID  `gorm:"type:uuid;not null" json:"address_id"`
-	Address     *Address   `gorm:"foreignKey:AddressID" json:"address,omitempty"`
-	AddressType string     `gorm:"size:50" json:"address_type,omitempty"` // e.g., 'REGISTERED', 'TRADING', 'BILLING', 'CORRESPONDENCE'
-	IsPrimary   bool       `gorm:"default:false" json:"is_primary"`
+	EntityID    uuid.UUID `gorm:"type:uuid;not null" json:"entity_id"`
+	Entity      *Entity   `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	AddressID   uuid.UUID `gorm:"type:uuid;not null" json:"address_id"`
+	Address     *Address  `gorm:"foreignKey:AddressID" json:"address,omitempty"`
+	AddressType string    `gorm:"size:50" json:"address_type,omitempty"` // e.g., 'REGISTERED', 'TRADING', 'BILLING', 'CORRESPONDENCE'
+	IsPrimary   bool      `gorm:"default:false" json:"is_primary"`
 }
 
 // TableName overrides the table name
@@ -137,13 +137,13 @@ const (
 // Instrument represents a financial instrument
 type Instrument struct {
 	BaseModel
-	Name              string             `gorm:"not null" json:"name" validate:"required"`
-	Type              InstrumentType     `gorm:"type:varchar(50)" json:"type"`
-	IssueCurrencyID   *uuid.UUID         `gorm:"type:uuid;column:issue_currency_id" json:"issue_currency_id"`
-	IssueCurrency     *Currency          `gorm:"foreignKey:IssueCurrencyID" json:"issue_currency,omitempty"`
-	PrimaryExchange   string             `gorm:"column:primary_exchange" json:"primary_exchange"`
-	Codes             []InstrumentCode   `gorm:"foreignKey:InstrumentID" json:"codes,omitempty"`
-	Active            bool               `gorm:"default:true" json:"active"`
+	Name            string           `gorm:"not null" json:"name" validate:"required"`
+	Type            InstrumentType   `gorm:"type:varchar(50)" json:"type"`
+	IssueCurrencyID *uuid.UUID       `gorm:"type:uuid;column:issue_currency_id" json:"issue_currency_id"`
+	IssueCurrency   *Currency        `gorm:"foreignKey:IssueCurrencyID" json:"issue_currency,omitempty"`
+	PrimaryExchange string           `gorm:"column:primary_exchange" json:"primary_exchange"`
+	Codes           []InstrumentCode `gorm:"foreignKey:InstrumentID" json:"codes,omitempty"`
+	Active          bool             `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
@@ -177,13 +177,13 @@ const (
 // InstrumentCode represents an identifier code for an instrument
 type InstrumentCode struct {
 	BaseModel
-	InstrumentID          uuid.UUID       `gorm:"type:uuid;not null" json:"instrument_id"`
-	Instrument            *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
-	CodeType              CodeType        `gorm:"type:varchar(50);not null" json:"code_type"`
-	CodeValue             string          `gorm:"size:100;not null" json:"code_value"`
-	IdentifierLevel       IdentifierLevel `gorm:"type:varchar(50)" json:"identifier_level,omitempty"`
-	MarketIdentifierCode  string          `gorm:"size:10" json:"market_identifier_code,omitempty"` // MIC code (e.g., XNAS, XFRA)
-	Region                string          `gorm:"size:50" json:"region,omitempty"`                 // For regional codes (e.g., US, DE)
+	InstrumentID         uuid.UUID       `gorm:"type:uuid;not null" json:"instrument_id"`
+	Instrument           *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
+	CodeType             CodeType        `gorm:"type:varchar(50);not null" json:"code_type"`
+	CodeValue            string          `gorm:"size:100;not null" json:"code_value"`
+	IdentifierLevel      IdentifierLevel `gorm:"type:varchar(50)" json:"identifier_level,omitempty"`
+	MarketIdentifierCode string          `gorm:"size:10" json:"market_identifier_code,omitempty"` // MIC code (e.g., XNAS, XFRA)
+	Region               string          `gorm:"size:50" json:"region,omitempty"`                 // For regional codes (e.g., US, DE)
 }
 
 // TableName overrides the table name
@@ -204,15 +204,15 @@ const (
 // Account represents a financial account
 type Account struct {
 	BaseModel
-	AccountNumber      string       `gorm:"uniqueIndex;not null" json:"account_number" validate:"required"`
-	EntityID           *uuid.UUID   `gorm:"type:uuid" json:"entity_id"`
-	Entity             *Entity      `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
-	AccountCurrencyID  *uuid.UUID   `gorm:"type:uuid;column:account_currency_id" json:"account_currency_id"`
-	AccountCurrency    *Currency    `gorm:"foreignKey:AccountCurrencyID" json:"account_currency,omitempty"`
-	Type               AccountType  `gorm:"type:varchar(50)" json:"type"`
-	Balance            float64      `gorm:"type:decimal(19,4);default:0" json:"balance"`
-	OpenedAt           time.Time    `json:"opened_at"`
-	Active             bool         `gorm:"default:true" json:"active"`
+	AccountNumber     string      `gorm:"uniqueIndex;not null" json:"account_number" validate:"required"`
+	EntityID          *uuid.UUID  `gorm:"type:uuid" json:"entity_id"`
+	Entity            *Entity     `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	AccountCurrencyID *uuid.UUID  `gorm:"type:uuid;column:account_currency_id" json:"account_currency_id"`
+	AccountCurrency   *Currency   `gorm:"foreignKey:AccountCurrencyID" json:"account_currency,omitempty"`
+	Type              AccountType `gorm:"type:varchar(50)" json:"type"`
+	Balance           float64     `gorm:"type:decimal(19,4);default:0" json:"balance"`
+	OpenedAt          time.Time   `json:"opened_at"`
+	Active            bool        `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
@@ -233,22 +233,22 @@ const (
 // SSI represents Standard Settlement Instructions
 type SSI struct {
 	BaseModel
-	EntityID               *uuid.UUID      `gorm:"type:uuid" json:"entity_id"`
-	Entity                 *Entity         `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
-	SettlementCurrencyID   *uuid.UUID      `gorm:"type:uuid;column:settlement_currency_id" json:"settlement_currency_id"`
-	SettlementCurrency     *Currency       `gorm:"foreignKey:SettlementCurrencyID" json:"settlement_currency,omitempty"`
-	InstrumentID           *uuid.UUID      `gorm:"type:uuid" json:"instrument_id"`
-	Instrument             *Instrument     `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
-	BeneficiaryName        string          `gorm:"not null" json:"beneficiary_name" validate:"required"`
-	BeneficiaryAccount     string          `gorm:"not null" json:"beneficiary_account" validate:"required"`
-	BeneficiaryBank        string          `gorm:"not null" json:"beneficiary_bank" validate:"required"`
-	BeneficiaryBankBIC     string          `json:"beneficiary_bank_bic"`
-	IntermediaryBank       string          `json:"intermediary_bank"`
-	IntermediaryBankBIC    string          `json:"intermediary_bank_bic"`
-	SettlementType         SettlementType  `gorm:"type:varchar(50)" json:"settlement_type"`
-	ValidFrom              time.Time       `json:"valid_from"`
-	ValidTo                *time.Time      `json:"valid_to"`
-	Active                 bool            `gorm:"default:true" json:"active"`
+	EntityID             *uuid.UUID     `gorm:"type:uuid" json:"entity_id"`
+	Entity               *Entity        `gorm:"foreignKey:EntityID" json:"entity,omitempty"`
+	SettlementCurrencyID *uuid.UUID     `gorm:"type:uuid;column:settlement_currency_id" json:"settlement_currency_id"`
+	SettlementCurrency   *Currency      `gorm:"foreignKey:SettlementCurrencyID" json:"settlement_currency,omitempty"`
+	InstrumentID         *uuid.UUID     `gorm:"type:uuid" json:"instrument_id"`
+	Instrument           *Instrument    `gorm:"foreignKey:InstrumentID" json:"instrument,omitempty"`
+	BeneficiaryName      string         `gorm:"not null" json:"beneficiary_name" validate:"required"`
+	BeneficiaryAccount   string         `gorm:"not null" json:"beneficiary_account" validate:"required"`
+	BeneficiaryBank      string         `gorm:"not null" json:"beneficiary_bank" validate:"required"`
+	BeneficiaryBankBIC   string         `json:"beneficiary_bank_bic"`
+	IntermediaryBank     string         `json:"intermediary_bank"`
+	IntermediaryBankBIC  string         `json:"intermediary_bank_bic"`
+	SettlementType       SettlementType `gorm:"type:varchar(50)" json:"settlement_type"`
+	ValidFrom            time.Time      `json:"valid_from"`
+	ValidTo              *time.Time     `json:"valid_to"`
+	Active               bool           `gorm:"default:true" json:"active"`
 }
 
 // TableName overrides the table name
@@ -270,4 +270,152 @@ type AuditLog struct {
 // TableName overrides the table name
 func (AuditLog) TableName() string {
 	return "audit_logs"
+}
+
+// Standardized audit models (following LEI audit pattern)
+
+// CountryAudit represents the complete audit history of country changes
+type CountryAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	CountryID      uuid.UUID `gorm:"type:uuid;not null;index" json:"country_id"`
+	Code           string    `gorm:"size:2;not null;index" json:"code"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (CountryAudit) TableName() string {
+	return "countries_audit"
+}
+
+// CurrencyAudit represents the complete audit history of currency changes
+type CurrencyAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	CurrencyID     uuid.UUID `gorm:"type:uuid;not null;index" json:"currency_id"`
+	Code           string    `gorm:"size:3;not null;index" json:"code"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (CurrencyAudit) TableName() string {
+	return "currencies_audit"
+}
+
+// AddressAudit represents the complete audit history of address changes
+type AddressAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	AddressID      uuid.UUID `gorm:"type:uuid;not null;index" json:"address_id"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (AddressAudit) TableName() string {
+	return "addresses_audit"
+}
+
+// EntityAudit represents the complete audit history of entity changes
+type EntityAudit struct {
+	ID                 uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EntityID           uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_id"`
+	RegistrationNumber string    `gorm:"size:255;index" json:"registration_number"`
+	Action             string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot     string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields      string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy          string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (EntityAudit) TableName() string {
+	return "entities_audit"
+}
+
+// EntityAddressAudit represents the complete audit history of entity address changes
+type EntityAddressAudit struct {
+	ID              uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EntityAddressID uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_address_id"`
+	EntityID        uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_id"`
+	AddressID       uuid.UUID `gorm:"type:uuid;not null;index" json:"address_id"`
+	Action          string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot  string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields   string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy       string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+func (EntityAddressAudit) TableName() string {
+	return "entity_addresses_audit"
+}
+
+// InstrumentAudit represents the complete audit history of instrument changes
+type InstrumentAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InstrumentID   uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_id"`
+	Name           string    `gorm:"size:255" json:"name"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (InstrumentAudit) TableName() string {
+	return "instruments_audit"
+}
+
+// InstrumentCodeAudit represents the complete audit history of instrument code changes
+type InstrumentCodeAudit struct {
+	ID               uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InstrumentCodeID uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_code_id"`
+	InstrumentID     uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_id"`
+	CodeType         string    `gorm:"size:50" json:"code_type"`
+	CodeValue        string    `gorm:"size:100" json:"code_value"`
+	Action           string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot   string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields    string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy        string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+func (InstrumentCodeAudit) TableName() string {
+	return "instrument_codes_audit"
+}
+
+// AccountAudit represents the complete audit history of account changes
+type AccountAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	AccountID      uuid.UUID `gorm:"type:uuid;not null;index" json:"account_id"`
+	AccountNumber  string    `gorm:"size:255;index" json:"account_number"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (AccountAudit) TableName() string {
+	return "accounts_audit"
+}
+
+// SSIAudit represents the complete audit history of SSI changes
+type SSIAudit struct {
+	ID                 uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	SSIID              uuid.UUID `gorm:"type:uuid;not null;index" json:"ssi_id"`
+	BeneficiaryAccount string    `gorm:"size:255" json:"beneficiary_account"`
+	Action             string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot     string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields      string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy          string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (SSIAudit) TableName() string {
+	return "ssis_audit"
 }
