@@ -1,0 +1,52 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  golangci-lint:
+    name: Go Linting
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'backend/go.mod'
+          cache: true
+          cache-dependency-path: 'backend/go.sum'
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: ./backend
+          args: --timeout=10m --verbose
+
+  docker-lint:
+    name: Dockerfile Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfiles
+        run: |
+          docker run --rm -i hadolint/hadolint < ./docker/Dockerfile.backend
+          docker run --rm -i hadolint/hadolint < ./docker/Dockerfile.frontend

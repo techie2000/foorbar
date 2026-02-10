@@ -1,0 +1,639 @@
+package handler
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/techie2000/axiom/internal/domain"
+	"github.com/techie2000/axiom/internal/service"
+)
+
+// Handlers holds all handler groups
+type Handlers struct {
+	Auth            *AuthHandler
+	Country         *CountryHandler
+	Currency        *CurrencyHandler
+	Entity          *EntityHandler
+	Instrument      *InstrumentHandler
+	Account         *AccountHandler
+	SSI             *SSIHandler
+	DataAcquisition *DataAcquisitionHandler
+}
+
+// NewHandlers creates a new handlers instance
+func NewHandlers(services *service.Services) *Handlers {
+	return &Handlers{
+		Auth:            NewAuthHandler(),
+		Country:         NewCountryHandler(services.Country),
+		Currency:        NewCurrencyHandler(services.Currency),
+		Entity:          NewEntityHandler(services.Entity),
+		Instrument:      NewInstrumentHandler(services.Instrument),
+		Account:         NewAccountHandler(services.Account),
+		SSI:             NewSSIHandler(services.SSI),
+		DataAcquisition: NewDataAcquisitionHandler(),
+	}
+}
+
+// AuthHandler handles authentication endpoints
+type AuthHandler struct{}
+
+func NewAuthHandler() *AuthHandler {
+	return &AuthHandler{}
+}
+
+// Login godoc
+// @Summary User login
+// @Description Authenticate user and return JWT token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body object true "Login credentials"
+// @Success 200 {object} object
+// @Router /auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) {
+	// TODO: Implement actual authentication
+	c.JSON(http.StatusOK, gin.H{"message": "Login endpoint - to be implemented"})
+}
+
+// Register godoc
+// @Summary User registration
+// @Description Register a new user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param user body object true "User details"
+// @Success 201 {object} object
+// @Router /auth/register [post]
+func (h *AuthHandler) Register(c *gin.Context) {
+	// TODO: Implement user registration
+	c.JSON(http.StatusCreated, gin.H{"message": "Register endpoint - to be implemented"})
+}
+
+// CountryHandler handles country endpoints
+type CountryHandler struct {
+	service service.CountryService
+}
+
+func NewCountryHandler(service service.CountryService) *CountryHandler {
+	return &CountryHandler{service: service}
+}
+
+// List godoc
+// @Summary List countries
+// @Description Get list of all countries
+// @Tags countries
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {array} domain.Country
+// @Security BearerAuth
+// @Router /countries [get]
+func (h *CountryHandler) List(c *gin.Context) {
+	// Parse and validate pagination parameters
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid limit parameter (must be 1-100)"})
+		return
+	}
+	
+	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if err != nil || offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid offset parameter (must be >= 0)"})
+		return
+	}
+
+	countries, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch countries"})
+		return
+	}
+
+	c.JSON(http.StatusOK, countries)
+}
+
+// Get godoc
+// @Summary Get country by ID
+// @Description Get a single country by ID
+// @Tags countries
+// @Accept json
+// @Produce json
+// @Param id path string true "Country ID"
+// @Success 200 {object} domain.Country
+// @Security BearerAuth
+// @Router /countries/{id} [get]
+func (h *CountryHandler) Get(c *gin.Context) {
+	id := c.Param("id")
+
+	country, err := h.service.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Country not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, country)
+}
+
+// Create godoc
+// @Summary Create country
+// @Description Create a new country
+// @Tags countries
+// @Accept json
+// @Produce json
+// @Param country body domain.Country true "Country object"
+// @Success 201 {object} domain.Country
+// @Security BearerAuth
+// @Router /countries [post]
+func (h *CountryHandler) Create(c *gin.Context) {
+	var country domain.Country
+	if err := c.ShouldBindJSON(&country); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := h.service.Create(&country); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create country"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, country)
+}
+
+// Update godoc
+// @Summary Update country
+// @Description Update an existing country
+// @Tags countries
+// @Accept json
+// @Produce json
+// @Param id path string true "Country ID"
+// @Param country body domain.Country true "Country object"
+// @Success 200 {object} domain.Country
+// @Security BearerAuth
+// @Router /countries/{id} [put]
+func (h *CountryHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	countryID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var country domain.Country
+	if err := c.ShouldBindJSON(&country); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	country.ID = countryID
+
+	// Verify country exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Country not found"})
+		return
+	}
+
+	if err := h.service.Update(&country); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update country"})
+		return
+	}
+
+	c.JSON(http.StatusOK, country)
+}
+
+// Delete godoc
+// @Summary Delete country
+// @Description Delete a country
+// @Tags countries
+// @Accept json
+// @Produce json
+// @Param id path string true "Country ID"
+// @Success 204
+// @Security BearerAuth
+// @Router /countries/{id} [delete]
+func (h *CountryHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.service.Delete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete country"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// CurrencyHandler, EntityHandler, etc. follow similar pattern
+// For brevity, I'll create placeholders
+
+type CurrencyHandler struct {
+	service service.CurrencyService
+}
+
+func NewCurrencyHandler(service service.CurrencyService) *CurrencyHandler {
+	return &CurrencyHandler{service: service}
+}
+
+func (h *CurrencyHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	currencies, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch currencies"})
+		return
+	}
+	c.JSON(http.StatusOK, currencies)
+}
+
+func (h *CurrencyHandler) Get(c *gin.Context) {
+	currency, err := h.service.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Currency not found"})
+		return
+	}
+	c.JSON(http.StatusOK, currency)
+}
+
+func (h *CurrencyHandler) Create(c *gin.Context) {
+	var currency domain.Currency
+	if err := c.ShouldBindJSON(&currency); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.service.Create(&currency); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create currency"})
+		return
+	}
+	c.JSON(http.StatusCreated, currency)
+}
+
+func (h *CurrencyHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	currencyID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var currency domain.Currency
+	if err := c.ShouldBindJSON(&currency); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	currency.ID = currencyID
+	
+	// Verify currency exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Currency not found"})
+		return
+	}
+	
+	if err := h.service.Update(&currency); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update currency"})
+		return
+	}
+	c.JSON(http.StatusOK, currency)
+}
+
+func (h *CurrencyHandler) Delete(c *gin.Context) {
+	if err := h.service.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete currency"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// Placeholder handlers for other entities
+type EntityHandler struct{ service service.EntityService }
+type InstrumentHandler struct{ service service.InstrumentService }
+type AccountHandler struct{ service service.AccountService }
+type SSIHandler struct{ service service.SSIService }
+type DataAcquisitionHandler struct{}
+
+func NewEntityHandler(s service.EntityService) *EntityHandler { return &EntityHandler{service: s} }
+func NewInstrumentHandler(s service.InstrumentService) *InstrumentHandler {
+	return &InstrumentHandler{service: s}
+}
+func NewAccountHandler(s service.AccountService) *AccountHandler { return &AccountHandler{service: s} }
+func NewSSIHandler(s service.SSIService) *SSIHandler             { return &SSIHandler{service: s} }
+func NewDataAcquisitionHandler() *DataAcquisitionHandler         { return &DataAcquisitionHandler{} }
+
+// Implement CRUD methods for remaining handlers
+func (h *EntityHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	entities, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch entities"})
+		return
+	}
+	c.JSON(http.StatusOK, entities)
+}
+
+func (h *EntityHandler) Get(c *gin.Context) {
+	entity, err := h.service.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not found"})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
+func (h *EntityHandler) Create(c *gin.Context) {
+	var entity domain.Entity
+	if err := c.ShouldBindJSON(&entity); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.service.Create(&entity); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create entity"})
+		return
+	}
+	c.JSON(http.StatusCreated, entity)
+}
+
+func (h *EntityHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	entityID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var entity domain.Entity
+	if err := c.ShouldBindJSON(&entity); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	entity.ID = entityID
+	
+	// Verify entity exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not found"})
+		return
+	}
+	
+	if err := h.service.Update(&entity); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update entity"})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
+func (h *EntityHandler) Delete(c *gin.Context) {
+	if err := h.service.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete entity"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// Instrument handler methods
+func (h *InstrumentHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	instruments, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch instruments"})
+		return
+	}
+	c.JSON(http.StatusOK, instruments)
+}
+
+func (h *InstrumentHandler) Get(c *gin.Context) {
+	instrument, err := h.service.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instrument not found"})
+		return
+	}
+	c.JSON(http.StatusOK, instrument)
+}
+
+func (h *InstrumentHandler) Create(c *gin.Context) {
+	var instrument domain.Instrument
+	if err := c.ShouldBindJSON(&instrument); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.service.Create(&instrument); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create instrument"})
+		return
+	}
+	c.JSON(http.StatusCreated, instrument)
+}
+
+func (h *InstrumentHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	instrumentID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var instrument domain.Instrument
+	if err := c.ShouldBindJSON(&instrument); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	instrument.ID = instrumentID
+	
+	// Verify instrument exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Instrument not found"})
+		return
+	}
+	
+	if err := h.service.Update(&instrument); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update instrument"})
+		return
+	}
+	c.JSON(http.StatusOK, instrument)
+}
+
+func (h *InstrumentHandler) Delete(c *gin.Context) {
+	if err := h.service.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete instrument"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// Account handler methods
+func (h *AccountHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	accounts, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch accounts"})
+		return
+	}
+	c.JSON(http.StatusOK, accounts)
+}
+
+func (h *AccountHandler) Get(c *gin.Context) {
+	account, err := h.service.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+	c.JSON(http.StatusOK, account)
+}
+
+func (h *AccountHandler) Create(c *gin.Context) {
+	var account domain.Account
+	if err := c.ShouldBindJSON(&account); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.service.Create(&account); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create account"})
+		return
+	}
+	c.JSON(http.StatusCreated, account)
+}
+
+func (h *AccountHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	accountID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var account domain.Account
+	if err := c.ShouldBindJSON(&account); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	account.ID = accountID
+	
+	// Verify account exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+	
+	if err := h.service.Update(&account); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update account"})
+		return
+	}
+	c.JSON(http.StatusOK, account)
+}
+
+func (h *AccountHandler) Delete(c *gin.Context) {
+	if err := h.service.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete account"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// SSI handler methods
+func (h *SSIHandler) List(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	ssis, err := h.service.GetAll(limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch SSIs"})
+		return
+	}
+	c.JSON(http.StatusOK, ssis)
+}
+
+func (h *SSIHandler) Get(c *gin.Context) {
+	ssi, err := h.service.GetByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "SSI not found"})
+		return
+	}
+	c.JSON(http.StatusOK, ssi)
+}
+
+func (h *SSIHandler) Create(c *gin.Context) {
+	var ssi domain.SSI
+	if err := c.ShouldBindJSON(&ssi); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	if err := h.service.Create(&ssi); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create SSI"})
+		return
+	}
+	c.JSON(http.StatusCreated, ssi)
+}
+
+func (h *SSIHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	
+	// Parse UUID from path
+	ssiID, err := uuid.Parse(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	var ssi domain.SSI
+	if err := c.ShouldBindJSON(&ssi); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	
+	// Apply the path ID to prevent updating wrong record
+	ssi.ID = ssiID
+	
+	// Verify SSI exists
+	if _, err := h.service.GetByID(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "SSI not found"})
+		return
+	}
+	
+	if err := h.service.Update(&ssi); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update SSI"})
+		return
+	}
+	c.JSON(http.StatusOK, ssi)
+}
+
+func (h *SSIHandler) Delete(c *gin.Context) {
+	if err := h.service.Delete(c.Param("id")); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete SSI"})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// Data acquisition endpoints
+func (h *DataAcquisitionHandler) Import(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Import endpoint - to be implemented"})
+}
+
+func (h *DataAcquisitionHandler) Export(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Export endpoint - to be implemented"})
+}
+
+func (h *DataAcquisitionHandler) ListJobs(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "List jobs endpoint - to be implemented"})
+}
+
+func (h *DataAcquisitionHandler) GetJob(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Get job endpoint - to be implemented"})
+}

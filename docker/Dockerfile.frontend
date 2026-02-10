@@ -1,0 +1,33 @@
+# Build stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+# Use npm ci if lockfile exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Runtime stage
+FROM node:18.20.5-alpine3.20
+
+WORKDIR /app
+
+# Copy package files and install production dependencies
+COPY package*.json ./
+# Use npm ci if lockfile exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then npm ci --production; else npm install --production; fi
+
+# Copy build output
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
