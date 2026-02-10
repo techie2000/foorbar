@@ -271,3 +271,151 @@ type AuditLog struct {
 func (AuditLog) TableName() string {
 	return "audit_logs"
 }
+
+// Standardized audit models (following LEI audit pattern)
+
+// CountryAudit represents the complete audit history of country changes
+type CountryAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	CountryID      uuid.UUID `gorm:"type:uuid;not null;index" json:"country_id"`
+	Code           string    `gorm:"size:2;not null;index" json:"code"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (CountryAudit) TableName() string {
+	return "countries_audit"
+}
+
+// CurrencyAudit represents the complete audit history of currency changes
+type CurrencyAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	CurrencyID     uuid.UUID `gorm:"type:uuid;not null;index" json:"currency_id"`
+	Code           string    `gorm:"size:3;not null;index" json:"code"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (CurrencyAudit) TableName() string {
+	return "currencies_audit"
+}
+
+// AddressAudit represents the complete audit history of address changes
+type AddressAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	AddressID      uuid.UUID `gorm:"type:uuid;not null;index" json:"address_id"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (AddressAudit) TableName() string {
+	return "addresses_audit"
+}
+
+// EntityAudit represents the complete audit history of entity changes
+type EntityAudit struct {
+	ID                 uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EntityID           uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_id"`
+	RegistrationNumber string    `gorm:"size:255;index" json:"registration_number"`
+	Action             string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot     string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields      string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy          string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (EntityAudit) TableName() string {
+	return "entities_audit"
+}
+
+// EntityAddressAudit represents the complete audit history of entity address changes
+type EntityAddressAudit struct {
+	ID               uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	EntityAddressID  uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_address_id"`
+	EntityID         uuid.UUID `gorm:"type:uuid;not null;index" json:"entity_id"`
+	AddressID        uuid.UUID `gorm:"type:uuid;not null;index" json:"address_id"`
+	Action           string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot   string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields    string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy        string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+func (EntityAddressAudit) TableName() string {
+	return "entity_addresses_audit"
+}
+
+// InstrumentAudit represents the complete audit history of instrument changes
+type InstrumentAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InstrumentID   uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_id"`
+	Name           string    `gorm:"size:255" json:"name"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (InstrumentAudit) TableName() string {
+	return "instruments_audit"
+}
+
+// InstrumentCodeAudit represents the complete audit history of instrument code changes
+type InstrumentCodeAudit struct {
+	ID               uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	InstrumentCodeID uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_code_id"`
+	InstrumentID     uuid.UUID `gorm:"type:uuid;not null;index" json:"instrument_id"`
+	CodeType         string    `gorm:"size:50" json:"code_type"`
+	CodeValue        string    `gorm:"size:100" json:"code_value"`
+	Action           string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot   string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields    string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy        string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+func (InstrumentCodeAudit) TableName() string {
+	return "instrument_codes_audit"
+}
+
+// AccountAudit represents the complete audit history of account changes
+type AccountAudit struct {
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	AccountID      uuid.UUID `gorm:"type:uuid;not null;index" json:"account_id"`
+	AccountNumber  string    `gorm:"size:255;index" json:"account_number"`
+	Action         string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields  string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy      string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+func (AccountAudit) TableName() string {
+	return "accounts_audit"
+}
+
+// SSIAudit represents the complete audit history of SSI changes
+type SSIAudit struct {
+	ID                 uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	SSIID              uuid.UUID `gorm:"type:uuid;not null;index" json:"ssi_id"`
+	BeneficiaryAccount string    `gorm:"size:255" json:"beneficiary_account"`
+	Action             string    `gorm:"size:20;not null" json:"action"` // CREATE, UPDATE, DELETE
+	RecordSnapshot     string    `gorm:"type:jsonb;not null" json:"record_snapshot"`
+	ChangedFields      string    `gorm:"type:jsonb" json:"changed_fields"`
+	ChangedBy          string    `gorm:"size:100;not null;default:'system'" json:"changed_by"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (SSIAudit) TableName() string {
+	return "ssis_audit"
+}

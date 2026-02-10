@@ -13,6 +13,17 @@ DROP TRIGGER IF EXISTS update_countries_updated_at ON countries;
 -- Drop function
 DROP FUNCTION IF EXISTS update_updated_at_column();
 
+-- Drop audit tables (no foreign key dependencies)
+DROP TABLE IF EXISTS ssis_audit;
+DROP TABLE IF EXISTS accounts_audit;
+DROP TABLE IF EXISTS instrument_codes_audit;
+DROP TABLE IF EXISTS instruments_audit;
+DROP TABLE IF EXISTS entity_addresses_audit;
+DROP TABLE IF EXISTS entities_audit;
+DROP TABLE IF EXISTS addresses_audit;
+DROP TABLE IF EXISTS currencies_audit;
+DROP TABLE IF EXISTS countries_audit;
+
 -- Drop tables (order matters due to foreign keys)
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS ssis;
