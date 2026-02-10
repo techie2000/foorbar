@@ -167,7 +167,7 @@ grep 'const Version' internal/version/version.go
 
 ### In Running Service
 - Version is logged on service startup
-- Check logs: `logs/axiom.log`
+- Check logs in your configured log directory
 
 ## Docker Build with Version
 
@@ -207,7 +207,7 @@ docker pull ghcr.io/techie2000/axiom:latest
 docker pull ghcr.io/techie2000/axiom:0
 
 # Run with Docker
-docker run -v ./data:/app/input ghcr.io/techie2000/axiom:latest
+docker run -p 8080:8080 ghcr.io/techie2000/axiom:latest
 ```
 
 **Note:** First time pushing to ghcr.io, you may need to make the package public in GitHub settings:
@@ -379,7 +379,7 @@ When setting up automated releases:
 
 ### Changed
 - **Breaking**: Configuration file format changed from INI to JSON
-  - Migration: Use the configuration management UI to migrate settings
+  - Migration: Refer to migration guide in documentation
 - Improved error messages to include actionable troubleshooting steps
 - Default timeout increased from 10s to 30s based on production metrics
 
