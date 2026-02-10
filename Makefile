@@ -1,6 +1,6 @@
 .PHONY: help build run test clean migrate-up migrate-down docker-up docker-down
 .PHONY: docker-dev-up docker-dev-down docker-uat-up docker-uat-down docker-prod-up docker-prod-down
-.PHONY: docker-all-up docker-all-down docker-all-status
+.PHONY: docker-all-up docker-all-down docker-all-status validate-env
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -147,3 +147,6 @@ install-tools: ## Install development tools
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+validate-env: ## Validate multi-environment setup
+	@bash scripts/validate-multi-env.sh
