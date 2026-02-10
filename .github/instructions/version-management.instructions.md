@@ -1,6 +1,6 @@
 ---
 applyTo: '**/VERSION,**/version.go,**/.github/**,**/CHANGELOG.md'
-description: 'Version management and release preparation instructions for csv2json project'
+description: 'Version management and release preparation instructions for Axiom project'
 ---
 
 # Version Management Instructions
@@ -139,13 +139,13 @@ When incrementing the version for a release:
 5. **Manual Verification (Optional)**
    ```bash
    # Download and verify binary
-   curl -LO https://github.com/{owner}/{repo}/releases/download/vX.Y.Z/csv2json-linux-amd64
-   curl -LO https://github.com/{owner}/{repo}/releases/download/vX.Y.Z/csv2json-linux-amd64.sha256
-   sha256sum -c csv2json-linux-amd64.sha256
+   curl -LO https://github.com/{owner}/{repo}/releases/download/vX.Y.Z/axiom-api-linux-amd64
+   curl -LO https://github.com/{owner}/{repo}/releases/download/vX.Y.Z/axiom-api-linux-amd64.sha256
+   sha256sum -c axiom-api-linux-amd64.sha256
 
    # Pull and test Docker image
    docker pull ghcr.io/{owner}/{repo}:vX.Y.Z
-   docker run --rm ghcr.io/{owner}/{repo}:vX.Y.Z ./csv2json -version
+   docker run --rm ghcr.io/{owner}/{repo}:vX.Y.Z ./axiom-api -version
    ```
 
 ## Version Checking
@@ -161,13 +161,13 @@ grep 'const Version' internal/version/version.go
 
 ### In Built Binary
 ```bash
-./csv2json -version
-# Output: csv2json v0.1.0 (commit: abc1234) (built: 2026-01-22T12:34:56Z)
+./axiom-api -version
+# Output: axiom-api v0.1.0 (commit: abc1234) (built: 2026-01-22T12:34:56Z)
 ```
 
 ### In Running Service
 - Version is logged on service startup
-- Check logs: `logs/csv2json.log`
+- Check logs in your configured log directory
 
 ## Docker Build with Version
 
@@ -180,8 +180,8 @@ docker build \
   --build-arg VERSION=$(cat VERSION) \
   --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-  -t csv2json:$(cat VERSION) \
-  -t csv2json:latest \
+  -t axiom:$(cat VERSION) \
+  -t axiom:latest \
   .
 ```
 
@@ -198,20 +198,20 @@ Docker images are automatically built and pushed to GitHub Container Registry wh
 **Using Published Images:**
 ```bash
 # Pull specific version
-docker pull ghcr.io/techie2000/csv2json:v0.2.0
+docker pull ghcr.io/techie2000/axiom:v0.2.0
 
 # Pull latest
-docker pull ghcr.io/techie2000/csv2json:latest
+docker pull ghcr.io/techie2000/axiom:latest
 
 # Pull major version (gets latest minor/patch)
-docker pull ghcr.io/techie2000/csv2json:0
+docker pull ghcr.io/techie2000/axiom:0
 
 # Run with Docker
-docker run -v ./data:/app/input ghcr.io/techie2000/csv2json:latest
+docker run -p 8080:8080 ghcr.io/techie2000/axiom:latest
 ```
 
 **Note:** First time pushing to ghcr.io, you may need to make the package public in GitHub settings:
-`Settings → Packages → csv2json → Package settings → Change visibility → Public`
+`Settings → Packages → axiom → Package settings → Change visibility → Public`
 
 ## Critical Rules
 
@@ -270,8 +270,8 @@ docker run -v ./data:/app/input ghcr.io/techie2000/csv2json:latest
 
 2. **Update comparison links**
    ```markdown
-   [Unreleased]: https://github.com/techie2000/csv2json/compare/vX.Y.Z...HEAD
-   [X.Y.Z]: https://github.com/techie2000/csv2json/compare/vX.Y.Z-1...vX.Y.Z
+   [Unreleased]: https://github.com/techie2000/axiom/compare/vX.Y.Z...HEAD
+   [X.Y.Z]: https://github.com/techie2000/axiom/compare/vX.Y.Z-1...vX.Y.Z
    ```
 
 3. **Verify completeness**
@@ -379,7 +379,7 @@ When setting up automated releases:
 
 ### Changed
 - **Breaking**: Configuration file format changed from INI to JSON
-  - Migration: Run `./csv2json migrate-config old.ini new.json`
+  - Migration: Refer to migration guide in documentation
 - Improved error messages to include actionable troubleshooting steps
 - Default timeout increased from 10s to 30s based on production metrics
 
