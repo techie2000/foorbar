@@ -170,7 +170,7 @@ Once started, each environment is accessible at:
 - Backend API: http://localhost:18080
 - Swagger UI: http://localhost:18080/swagger/index.html
 - PostgreSQL: localhost:15432
-- RabbitMQ Management: http://localhost:115672
+- RabbitMQ Management: http://localhost:15673
 
 **UAT Environment:**
 - Frontend: http://localhost:23000
@@ -184,7 +184,7 @@ Once started, each environment is accessible at:
 - Backend API: http://localhost:38080
 - Swagger UI: http://localhost:38080/swagger/index.html
 - PostgreSQL: localhost:35432
-- RabbitMQ Management: http://localhost:315672
+- RabbitMQ Management: http://localhost:35673
 
 ### Local Development with Docker Compose (Legacy)
 

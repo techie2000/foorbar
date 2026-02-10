@@ -15,6 +15,59 @@ The Axiom project supports three independent environments, each with its own:
 
 This enables side-by-side comparison and testing across environments without conflicts.
 
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Development Environment (Port Prefix: 1)"
+        DevFE[Frontend<br/>:13000]
+        DevBE[Backend<br/>:18080]
+        DevPG[(PostgreSQL<br/>:15432)]
+        DevRMQ[RabbitMQ<br/>:15672/:15673]
+        DevFE --> DevBE
+        DevBE --> DevPG
+        DevBE --> DevRMQ
+    end
+
+    subgraph "UAT Environment (Port Prefix: 2)"
+        UATFE[Frontend<br/>:23000]
+        UATBE[Backend<br/>:28080]
+        UATPG[(PostgreSQL<br/>:25432)]
+        UATRMQ[RabbitMQ<br/>:25672/:25673]
+        UATFE --> UATBE
+        UATBE --> UATPG
+        UATBE --> UATRMQ
+    end
+
+    subgraph "Production Environment (Port Prefix: 3)"
+        ProdFE[Frontend<br/>:33000]
+        ProdBE[Backend<br/>:38080]
+        ProdPG[(PostgreSQL<br/>:35432)]
+        ProdRMQ[RabbitMQ<br/>:35672/:35673]
+        ProdFE --> ProdBE
+        ProdBE --> ProdPG
+        ProdBE --> ProdRMQ
+    end
+
+    User[User/Developer]
+    User -.-> DevFE
+    User -.-> UATFE
+    User -.-> ProdFE
+
+    style DevFE fill:#e3f2fd
+    style DevBE fill:#e3f2fd
+    style DevPG fill:#e3f2fd
+    style DevRMQ fill:#e3f2fd
+    style UATFE fill:#fff3e0
+    style UATBE fill:#fff3e0
+    style UATPG fill:#fff3e0
+    style UATRMQ fill:#fff3e0
+    style ProdFE fill:#ffebee
+    style ProdBE fill:#ffebee
+    style ProdPG fill:#ffebee
+    style ProdRMQ fill:#ffebee
+```
+
 ## Port Assignment Strategy
 
 Each environment uses a unique port prefix to avoid conflicts:
@@ -44,7 +97,7 @@ Each environment uses a unique port prefix to avoid conflicts:
 | Backend API | 8080 | 38080 |
 | PostgreSQL | 5432 | 35432 |
 | RabbitMQ AMQP | 5672 | 35672 |
-| RabbitMQ Management | 15672 | 315672 |
+| RabbitMQ Management | 15672 | 35673 |
 
 ## Environment Configuration Files
 
@@ -198,7 +251,7 @@ psql -h localhost -p 35432 -U axiom -d axiom_prod
 
 - Development: http://localhost:15673 (guest/guest)
 - UAT: http://localhost:25673 (guest/guest)
-- Production: http://localhost:315672 (guest/guest)
+- Production: http://localhost:35673 (guest/guest)
 
 ## Container Naming
 
