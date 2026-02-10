@@ -304,3 +304,8 @@ Detailed documentation is available in the `docs/` directory:
 - [Database Schema](docs/database-schema.md)
 - [Deployment Guide](docs/deployment.md)
 - [Development Workflow](docs/development-workflow.md)
+
+**Multi-Environment Setup:**
+- [Multi-Environment Setup Guide](docs/environments/multi-environment-setup.md)
+- [Quick Start Guide](docs/environments/multi-environment-quickstart.md)
+- [Port Reference](docs/environments/environment-port-reference.md)
