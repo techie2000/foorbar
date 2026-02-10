@@ -13,10 +13,11 @@ type Services struct {
 	Instrument InstrumentService
 	Account    AccountService
 	SSI        SSIService
+	LEI        LEIService
 }
 
 // NewServices creates a new services instance
-func NewServices(repos *repository.Repositories) *Services {
+func NewServices(repos *repository.Repositories, leiDataDir string) *Services {
 	return &Services{
 		Country:    NewCountryService(repos.Country),
 		Currency:   NewCurrencyService(repos.Currency),
@@ -24,6 +25,7 @@ func NewServices(repos *repository.Repositories) *Services {
 		Instrument: NewInstrumentService(repos.Instrument),
 		Account:    NewAccountService(repos.Account),
 		SSI:        NewSSIService(repos.SSI),
+		LEI:        NewLEIService(repos.LEI, leiDataDir),
 	}
 }
 
