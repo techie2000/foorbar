@@ -65,9 +65,20 @@ func (s *schedulerService) dailyDeltaSyncLoop() {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 	
-	// Run immediately on start
-	if err := s.RunDailyDeltaSync(); err != nil {
-		log.Error().Err(err).Msg("Failed to run initial delta sync")
+	// Check if database is empty on first run
+	count, err := s.leiService.CountLEIRecords()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to count LEI records")
+	} else if count == 0 {
+		log.Info().Msg("Database is empty, running initial full sync instead of delta")
+		if err := s.RunDailyFullSync(); err != nil {
+			log.Error().Err(err).Msg("Failed to run initial full sync")
+		}
+	} else {
+		log.Info().Int64("existing_records", count).Msg("Database has existing records, running delta sync")
+		if err := s.RunDailyDeltaSync(); err != nil {
+			log.Error().Err(err).Msg("Failed to run initial delta sync")
+		}
 	}
 	
 	for {

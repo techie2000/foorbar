@@ -17,6 +17,7 @@ type LEIRepository interface {
 	FindLEIByLEI(lei string) (*domain.LEIRecord, error)
 	FindLEIByID(id string) (*domain.LEIRecord, error)
 	FindAllLEI(limit, offset int) ([]*domain.LEIRecord, error)
+	CountLEIRecords() (int64, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
 	UpsertLEIRecord(record *domain.LEIRecord) (bool, error) // Returns true if updated, false if created
 	DeleteLEI(id string) error
@@ -76,6 +77,15 @@ func (r *leiRepository) FindAllLEI(limit, offset int) ([]*domain.LEIRecord, erro
 		return nil, err
 	}
 	return records, nil
+}
+
+// CountLEIRecords returns the total count of LEI records
+func (r *leiRepository) CountLEIRecords() (int64, error) {
+	var count int64
+	if err := r.db.Model(&domain.LEIRecord{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // UpdateLEIRecord updates an existing LEI record

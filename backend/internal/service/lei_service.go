@@ -81,6 +81,7 @@ type LEIService interface {
 	GetLEIByCode(lei string) (*domain.LEIRecord, error)
 	GetLEIByID(id string) (*domain.LEIRecord, error)
 	GetAllLEI(limit, offset int) ([]*domain.LEIRecord, error)
+	CountLEIRecords() (int64, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
 
 	// Audit and history
@@ -650,6 +651,11 @@ func (s *leiService) GetLEIByID(id string) (*domain.LEIRecord, error) {
 // GetAllLEI retrieves all LEI records with pagination
 func (s *leiService) GetAllLEI(limit, offset int) ([]*domain.LEIRecord, error) {
 	return s.repo.FindAllLEI(limit, offset)
+}
+
+// CountLEIRecords returns the total count of LEI records
+func (s *leiService) CountLEIRecords() (int64, error) {
+	return s.repo.CountLEIRecords()
 }
 
 // UpdateLEIRecord updates an LEI record
