@@ -412,7 +412,7 @@ When performing a code review involving build/deployment:
 - **Migration Naming**: Check migrations follow pattern `XXXXXX_description.up.sql` / `XXXXXX_description.down.sql`
 - **Multi-Environment Config**: Verify changes work across all environments (dev, uat, prod) using appropriate docker-compose files
 - **Environment Variables**: Check all required env vars are documented and have sensible defaults where appropriate
-- **Port Assignments**: Verify ports follow the project's environment port reference (see [environment-port-reference.md](docs/environments/environment-port-reference.md))
+- **Port Assignments**: Verify ports follow the project's environment port reference (docs/environments/environment-port-reference.md)
 - **Service Dependencies**: Check docker-compose `depends_on` correctly reflects service startup order
 - **Volume Mounts**: Verify volume mounts are correct for dev vs prod environments
 - **Health Checks**: Confirm services have proper health checks for orchestration
@@ -500,5 +500,5 @@ When performing a code review, apply these prompt engineering principles from th
 - **Architecture**: Modular Monolith with clear layer separation, CQRS pattern for reads/writes
 - **Build Tool**: Go modules (`go.mod`), npm for frontend, Make for automation
 - **Testing**: Go testing package with table-driven tests, >70% coverage target
-- **Code Style**: Follows Effective Go and Go Code Review Comments (see [go.instructions.md](.github/instructions/go.instructions.md))
+- **Code Style**: Follows Effective Go and Go Code Review Comments (see go.instructions.md)
 - **Module Path**: `github.com/techie2000/axiom/backend`

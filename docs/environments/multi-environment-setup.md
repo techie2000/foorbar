@@ -6,6 +6,7 @@ production environments simultaneously on the same machine.
 ## Overview
 
 The Axiom project supports three independent environments, each with its own:
+
 - Database instance (PostgreSQL)
 - Message queue (RabbitMQ)
 - Backend service
@@ -73,31 +74,34 @@ graph TB
 Each environment uses a unique port prefix to avoid conflicts:
 
 ### Development Environment (Prefix: 1)
-| Service | Internal Port | External Port |
-|---------|--------------|---------------|
-| Frontend | 3000 | 13000 |
-| Backend API | 8080 | 18080 |
-| PostgreSQL | 5432 | 15432 |
-| RabbitMQ AMQP | 5672 | 15672 |
-| RabbitMQ Management | 15672 | 15673 |
+
+| Service             | Internal Port | External Port |
+|---------------------|---------------|---------------|
+| Frontend            | 3000          | 13000         |
+| Backend API         | 8080          | 18080         |
+| PostgreSQL          | 5432          | 15432         |
+| RabbitMQ AMQP       | 5672          | 15672         |
+| RabbitMQ Management | 15672         | 15673         |
 
 ### UAT Environment (Prefix: 2)
-| Service | Internal Port | External Port |
-|---------|--------------|---------------|
-| Frontend | 3000 | 23000 |
-| Backend API | 8080 | 28080 |
-| PostgreSQL | 5432 | 25432 |
-| RabbitMQ AMQP | 5672 | 25672 |
-| RabbitMQ Management | 15672 | 25673 |
+
+| Service             | Internal Port | External Port |
+|---------------------|---------------|---------------|
+| Frontend            | 3000          | 23000         |
+| Backend API         | 8080          | 28080         |
+| PostgreSQL          | 5432          | 25432         |
+| RabbitMQ AMQP       | 5672          | 25672         |
+| RabbitMQ Management | 15672         | 25673         |
 
 ### Production Environment (Prefix: 3)
-| Service | Internal Port | External Port |
-|---------|--------------|---------------|
-| Frontend | 3000 | 33000 |
-| Backend API | 8080 | 38080 |
-| PostgreSQL | 5432 | 35432 |
-| RabbitMQ AMQP | 5672 | 35672 |
-| RabbitMQ Management | 15672 | 35673 |
+
+| Service             | Internal Port | External Port |
+|---------------------|---------------|---------------|
+| Frontend            | 3000          | 33000         |
+| Backend API         | 8080          | 38080         |
+| PostgreSQL          | 5432          | 35432         |
+| RabbitMQ AMQP       | 5672          | 35672         |
+| RabbitMQ Management | 15672         | 35673         |
 
 ## Environment Configuration Files
 
@@ -142,6 +146,7 @@ Each environment has a dedicated Docker Compose file:
 - `docker-compose.prod.yml` - Production environment
 
 These files:
+
 - Reference environment variables from corresponding `.env` files
 - Create isolated Docker networks
 - Use separate volume names for data persistence
@@ -258,6 +263,7 @@ psql -h localhost -p 35432 -U axiom -d axiom_prod
 Containers follow this naming pattern: `axiom-{env}-{service}`
 
 Examples:
+
 - `axiom-dev-backend`
 - `axiom-uat-postgres`
 - `axiom-prod-frontend`
@@ -265,6 +271,7 @@ Examples:
 ## Network Isolation
 
 Each environment runs in its own Docker network:
+
 - `axiom-dev-network`
 - `axiom-uat-network`
 - `axiom-prod-network`
@@ -274,6 +281,7 @@ This ensures complete isolation between environments.
 ## Volume Management
 
 Data volumes are environment-specific:
+
 - `postgres_data_dev`
 - `postgres_data_uat`
 - `postgres_data_prod`

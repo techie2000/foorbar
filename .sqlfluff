@@ -1,0 +1,93 @@
+[sqlfluff]
+# SQLFluff configuration for Axiom project
+# Documentation: https://docs.sqlfluff.com/en/stable/configuration.html
+
+# PostgreSQL dialect
+dialect = postgres
+
+# Set the template engine (raw, jinja, dbt, placeholder)
+templater = raw
+
+# SQL file encoding
+encoding = utf-8
+
+# Maximum line length (default: 80)
+max_line_length = 120
+
+# Indentation settings
+indent_unit = space
+tab_space_size = 4
+
+# Exclude directories and files
+exclude_rules = None
+ignore_templated_areas = True
+
+# File extensions to lint
+sql_file_exts = .sql,.sql.j2,.dml,.ddl
+
+[sqlfluff:indentation]
+# Indentation for SQL statements
+indented_joins = False
+indented_using_on = True
+template_blocks_indent = True
+
+[sqlfluff:rules]
+# General rules configuration
+# See: https://docs.sqlfluff.com/en/stable/rules.html
+
+# Capitalisation policy for keywords (consistent: use same case, upper: uppercase, lower: lowercase)
+capitalisation_policy = upper
+
+# Comma placement (leading or trailing)
+comma_style = trailing
+
+[sqlfluff:rules:capitalisation.keywords]
+# Keywords should be uppercase
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+# Table/column names can be any case (unquoted identifiers)
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+# Function names should be uppercase
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+# NULL, TRUE, FALSE should be uppercase
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+# Data types (VARCHAR, INTEGER, etc.) should be uppercase
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:aliasing.table]
+# Tables must have aliases in FROM clauses with joins
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+# Column aliases can be implicit or explicit
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.expression]
+# Complex column expressions should have aliases
+allow_scalar = False
+
+[sqlfluff:rules:ambiguous.column_references]
+# Columns in SELECT should reference table aliases to avoid ambiguity
+single_table_references = consistent
+
+[sqlfluff:rules:convention.terminator]
+# SQL statements should end with semicolons
+multiline_newline = False
+require_final_semicolon = True
+
+[sqlfluff:rules:layout.long_lines]
+# Maximum line length
+ignore_comment_lines = True
+ignore_comment_clauses = True
+
+[sqlfluff:rules:references.keywords]
+# How to handle quoted identifiers
+quoted_identifiers_policy = none
+unquoted_identifiers_policy = all

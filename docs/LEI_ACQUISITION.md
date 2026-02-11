@@ -54,9 +54,11 @@ master data for easier permission management.
 ### Tables
 
 #### `lei_raw.lei_records`
+
 Main table storing raw LEI data from GLEIF.
 
 Key fields:
+
 - `lei` (VARCHAR(20), UNIQUE): Legal Entity Identifier
 - `legal_name`: Entity legal name
 - `legal_address_*`: Legal address fields
@@ -69,9 +71,11 @@ Key fields:
 - `created_at`, `updated_at`: Timestamps
 
 #### `lei_raw.lei_records_audit`
+
 Complete audit history of all LEI record changes.
 
 Key fields:
+
 - `lei_record_id`: Reference to LEI record
 - `lei`: LEI code for easy lookup
 - `action`: CREATE, UPDATE, or DELETE
@@ -82,9 +86,11 @@ Key fields:
 - `created_at`: When the change occurred
 
 #### `lei_raw.source_files`
+
 Tracks downloaded files and their processing status.
 
 Key fields:
+
 - `file_name`: Name of downloaded file
 - `file_type`: FULL or DELTA
 - `file_url`: Source URL
@@ -95,9 +101,11 @@ Key fields:
 - `processing_error`: Error details if failed
 
 #### `lei_raw.file_processing_status`
+
 Overall status of scheduled jobs.
 
 Key fields:
+
 - `job_type`: DAILY_FULL or DAILY_DELTA
 - `status`: IDLE, RUNNING, COMPLETED, or FAILED
 - `last_run_at`, `next_run_at`, `last_success_at`: Job timing
@@ -111,37 +119,46 @@ All endpoints require JWT authentication and are under `/api/v1/lei`.
 ### Query Endpoints
 
 #### `GET /api/v1/lei`
+
 List LEI records with pagination.
 
 Query parameters:
+
 - `limit` (default: 50, max: 100): Number of records to return
 - `offset` (default: 0): Offset for pagination
 
 Response: Array of LEI records
 
 #### `GET /api/v1/lei/:lei`
+
 Get a specific LEI record by its LEI code.
 
 Path parameters:
+
 - `lei`: The LEI code (20 characters)
 
 Response: Single LEI record
 
 #### `GET /api/v1/lei/record/:id`
+
 Get a specific LEI record by its database ID.
 
 Path parameters:
+
 - `id`: UUID of the record
 
 Response: Single LEI record
 
 #### `GET /api/v1/lei/:lei/audit`
+
 Get audit history for a specific LEI.
 
 Path parameters:
+
 - `lei`: The LEI code
 
 Query parameters:
+
 - `limit` (default: 20): Number of audit records to return
 
 Response: Array of audit records showing complete change history
@@ -149,9 +166,11 @@ Response: Array of audit records showing complete change history
 ### Sync Control Endpoints
 
 #### `POST /api/v1/lei/sync/full`
+
 Manually trigger a full synchronization.
 
 Response:
+
 ```json
 {
   "message": "Full sync triggered"
@@ -159,9 +178,11 @@ Response:
 ```
 
 #### `POST /api/v1/lei/sync/delta`
+
 Manually trigger a delta synchronization.
 
 Response:
+
 ```json
 {
   "message": "Delta sync triggered"
@@ -171,20 +192,25 @@ Response:
 ### Status Endpoints
 
 #### `GET /api/v1/lei/status/:jobType`
+
 Get processing status for a job type.
 
 Path parameters:
+
 - `jobType`: Either `DAILY_FULL` or `DAILY_DELTA`
 
 Response: Job status including last run time, next scheduled run, and current file being processed
 
 #### `POST /api/v1/lei/source-file/:id/resume`
+
 Resume processing of an interrupted source file.
 
 Path parameters:
+
 - `id`: UUID of the source file
 
 Response:
+
 ```json
 {
   "message": "Processing resumed"
@@ -194,12 +220,14 @@ Response:
 ## Scheduler Configuration
 
 ### Delta Sync
+
 - **Frequency**: Every hour
 - **Source**: GLEIF Level 1 Delta files (JSON format)
 - **Purpose**: Capture incremental changes
 - **Runs immediately on startup**, then hourly
 
 ### Full Sync
+
 - **Frequency**: Weekly (Sunday at 2:00 AM)
 - **Source**: GLEIF Level 1 Full files (JSON format)
 - **Purpose**: Complete refresh of all data
@@ -208,16 +236,19 @@ Response:
 ## Data Flow
 
 1. **Download Phase**
+
    - Scheduler triggers download from GLEIF
    - File saved to `data/lei/` directory
    - SHA-256 hash calculated for integrity
    - `SourceFile` record created with PENDING status
 
 2. **Processing Phase**
+
    - File status updated to IN_PROGRESS
    - ZIP archive extracted to temporary location
    - JSON file parsed and processed line by line (JSON Lines format)
    - For each record:
+
      - Check if LEI already exists
      - If new: Create record and audit entry (CREATE)
      - If existing: Compare fields for changes
@@ -227,6 +258,7 @@ Response:
    - `last_processed_lei` updated for resume capability
 
 3. **Completion Phase**
+
    - File status updated to COMPLETED or FAILED
    - Final statistics recorded
    - Temporary files cleaned up
@@ -249,6 +281,7 @@ The system only records updates when actual data changes:
 1. **Field-by-Field Comparison**: Each field is compared between old and new records
 2. **Skip Metadata Fields**: Internal fields (ID, timestamps, etc.) are not considered changes
 3. **JSON Change Log**: Changes stored as JSONB:
+
    ```json
    {
      "LegalName": {
@@ -261,6 +294,7 @@ The system only records updates when actual data changes:
      }
    }
    ```
+
 4. **No Unnecessary Updates**: If no fields changed, no update is performed
 5. **Audit Trail**: Every actual change creates an audit record
 
@@ -269,12 +303,14 @@ The system only records updates when actual data changes:
 ### Environment Variables
 
 No specific environment variables required. The system uses:
+
 - Database configuration from existing config
 - Data directory: `./data/lei` (created automatically)
 
 ### File Storage
 
 Downloaded files are stored in:
+
 - Location: `./data/lei/`
 - Format: `lei-{TYPE}-{TIMESTAMP}.xml.zip`
 - Example: `lei-FULL-20260210-143022.xml.zip`
@@ -283,18 +319,21 @@ Downloaded files are stored in:
 ## Monitoring
 
 ### Check Processing Status
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   http://localhost:8080/api/v1/lei/status/DAILY_DELTA
 ```
 
 ### View Recent Audit History
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   http://localhost:8080/api/v1/lei/5493001KJTIIGC8Y1R12/audit?limit=10
 ```
 
 ### Query LEI Records
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   "http://localhost:8080/api/v1/lei?limit=10&offset=0"
@@ -307,6 +346,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 If a file is stuck processing:
 
 1. Check the source file status:
+
    ```sql
    SELECT * FROM source_files WHERE processing_status = 'IN_PROGRESS';
    ```
@@ -314,6 +354,7 @@ If a file is stuck processing:
 2. Check the `last_processed_lei` field to see where it stopped
 
 3. Resume processing:
+
    ```bash
    curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      http://localhost:8080/api/v1/lei/source-file/{FILE_ID}/resume
@@ -322,6 +363,7 @@ If a file is stuck processing:
 ### Failed Downloads
 
 Check the `file_processing_status` table:
+
 ```sql
 SELECT * FROM file_processing_status WHERE status = 'FAILED';
 ```
@@ -332,6 +374,7 @@ The `error_message` field will contain details about the failure.
 
 Full LEI files can be very large (millions of records). Processing may take several hours. This is expected behavior.
 The system:
+
 - Saves progress every 1000 records
 - Logs progress to console
 - Can be safely interrupted and resumed
@@ -347,6 +390,7 @@ The system:
 ## Future Enhancements
 
 Potential improvements:
+
 - [ ] Support for Level 2 data (relationship data)
 - [ ] Real-time change notifications
 - [ ] Web UI for monitoring processing status

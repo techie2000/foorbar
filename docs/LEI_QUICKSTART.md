@@ -22,6 +22,7 @@ make migrate-up
 ```
 
 This creates the following tables in the `lei_raw` schema:
+
 - `lei_raw.lei_records`
 - `lei_raw.lei_records_audit`
 - `lei_raw.source_files`
@@ -37,6 +38,7 @@ Check that tables were created:
 ```
 
 Expected output:
+
 ```text
              List of relations
   Schema  |         Name          | Type  | Owner
@@ -57,6 +59,7 @@ go run cmd/api/main.go
 ```
 
 You should see log messages:
+
 ```text
 INFO Starting LEI scheduler service
 INFO Scheduled next full sync next_run=2026-02-16T02:00:00Z
@@ -79,6 +82,7 @@ curl -X POST http://localhost:8080/api/v1/lei/sync/full \
 ```
 
 Response:
+
 ```json
 {
   "message": "Full sync triggered"
@@ -95,6 +99,7 @@ curl -X GET http://localhost:8080/api/v1/lei/status/DAILY_FULL \
 ```
 
 Response:
+
 ```json
 {
   "id": "...",
@@ -147,12 +152,14 @@ curl -X GET "http://localhost:8080/api/v1/lei/5493001KJTIIGC8Y1R12/audit?limit=5
 ### Manual Triggers
 
 Trigger delta sync:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/lei/sync/delta \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Trigger full sync:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/lei/sync/full \
   -H "Authorization: Bearer $TOKEN"
@@ -161,6 +168,7 @@ curl -X POST http://localhost:8080/api/v1/lei/sync/full \
 ## File Storage
 
 Downloaded files are stored in:
+
 ```text
 ./data/lei/
 └── lei-FULL-20260210-143000.xml.zip
@@ -236,6 +244,7 @@ GROUP BY file_type;
 ### Scheduler Not Starting
 
 Check logs for errors:
+
 ```bash
 tail -f backend/logs/app.log | grep LEI
 ```
@@ -243,6 +252,7 @@ tail -f backend/logs/app.log | grep LEI
 ### Processing Stuck
 
 Check source file status:
+
 ```sql
 SELECT * FROM source_files 
 WHERE processing_status = 'IN_PROGRESS'
@@ -250,6 +260,7 @@ ORDER BY processing_started_at DESC;
 ```
 
 Resume processing:
+
 ```bash
 # Get the source file ID from the query above
 curl -X POST http://localhost:8080/api/v1/lei/source-file/{FILE_ID}/resume \
@@ -259,6 +270,7 @@ curl -X POST http://localhost:8080/api/v1/lei/source-file/{FILE_ID}/resume \
 ### Download Failed
 
 Check job status for error details:
+
 ```sql
 SELECT job_type, status, error_message, last_run_at 
 FROM file_processing_status 
@@ -266,6 +278,7 @@ WHERE status = 'FAILED';
 ```
 
 Manually retry:
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/lei/sync/full \
   -H "Authorization: Bearer $TOKEN"
@@ -281,6 +294,7 @@ curl -X POST http://localhost:8080/api/v1/lei/sync/full \
 ## Support
 
 For issues or questions:
+
 1. Check application logs: `backend/logs/app.log`
 2. Query database for status details
 3. Review GLEIF documentation

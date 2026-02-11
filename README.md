@@ -14,6 +14,7 @@ Architecture decisions are documented as ADRs in [docs/adr](docs/adr).
 ### Tech Stack
 
 **Backend:**
+
 - **Gin Framework** - Fast HTTP web framework for REST APIs
 - **Fiber Framework** - Ultra-fast web framework for high-throughput services
 - **GORM** - ORM for database operations
@@ -22,12 +23,14 @@ Architecture decisions are documented as ADRs in [docs/adr](docs/adr).
 - **Beego** - Notification service framework
 
 **Frontend:**
+
 - **Next.js** - React framework for server-rendered applications
 - **React** - UI component library
 - **Tailwind CSS** - Utility-first CSS framework
 - **shadcn/ui** - React UI components
 
 **Features:**
+
 - JWT Authentication
 - CORS Configuration
 - CQRS Pattern (Command Query Responsibility Segregation)
@@ -44,32 +47,32 @@ Architecture decisions are documented as ADRs in [docs/adr](docs/adr).
 ```text
 axiom/
 ├── backend/
-│   ├── cmd/                    # Application entry points
-│   │   ├── api/               # Main API server (Gin)
-│   │   ├── worker/            # Background worker (Fiber)
-│   │   └── notification/      # Notification service (Beego)
-│   ├── internal/              # Private application code
-│   │   ├── domain/           # Domain models
-│   │   ├── repository/       # Data access layer
-│   │   ├── service/          # Business logic
-│   │   ├── handler/          # HTTP handlers
-│   │   ├── middleware/       # Custom middleware
+│   ├── cmd/                 # Application entry points
+│   │   ├── api/             # Main API server (Gin)
+│   │   ├── worker/          # Background worker (Fiber)
+│   │   └── notification/    # Notification service (Beego)
+│   ├── internal/            # Private application code
+│   │   ├── domain/          # Domain models
+│   │   ├── repository/      # Data access layer
+│   │   ├── service/         # Business logic
+│   │   ├── handler/         # HTTP handlers
+│   │   ├── middleware/      # Custom middleware
 │   │   ├── cqrs/            # CQRS implementation
 │   │   └── config/          # Configuration
-│   ├── pkg/                   # Public libraries
+│   ├── pkg/                 # Public libraries
 │   │   ├── auth/            # JWT authentication
 │   │   ├── validator/       # Input validation
 │   │   ├── logger/          # Logging utilities
 │   │   └── queue/           # RabbitMQ client
-│   ├── migrations/           # Database migrations
-│   ├── docs/                 # Swagger documentation
+│   ├── migrations/          # Database migrations
+│   ├── docs/                # Swagger documentation
 │   └── tests/               # Integration tests
 ├── frontend/
-│   ├── app/                  # Next.js app directory
+│   ├── app/                 # Next.js app directory
 │   ├── components/          # React components
 │   ├── lib/                 # Utilities
-│   └── public/             # Static assets
-├── docker/                   # Docker configurations
+│   └── public/              # Static assets
+├── docker/                  # Docker configurations
 ├── scripts/                 # Build and deployment scripts
 └── docs/                    # Documentation
 ```
@@ -77,6 +80,7 @@ axiom/
 ## Development Phases
 
 ### Phase 1: Data Acquisition and Storage
+
 - Implement domain data models (Countries, Currencies, Entities, Instruments, Accounts, SSI's)
 - Set up PostgreSQL schemas and migrations
 - Create API endpoints for CRUD operations
@@ -84,16 +88,19 @@ axiom/
 - Set up RabbitMQ for async processing
 
 ### Phase 2: Scheduled Updates
+
 - Implement scheduled jobs for data refresh
 - Add change detection and tracking
 - Create webhook endpoints for real-time updates
 
 ### Phase 3: Auditing
+
 - Implement audit logging for all data changes
 - Add audit trail UI
 - Create reporting endpoints
 
 ### Phase 4 and Beyond
+
 - Advanced analytics
 - Data visualization
 - Export capabilities
@@ -168,6 +175,7 @@ make docker-prod-logs   # Production
 Once started, each environment is accessible at:
 
 **Development Environment:**
+
 - Frontend: http://localhost:13000
 - Backend API: http://localhost:18080
 - Swagger UI: http://localhost:18080/swagger/index.html
@@ -175,6 +183,7 @@ Once started, each environment is accessible at:
 - RabbitMQ Management: http://localhost:15673
 
 **UAT Environment:**
+
 - Frontend: http://localhost:23000
 - Backend API: http://localhost:28080
 - Swagger UI: http://localhost:28080/swagger/index.html
@@ -182,6 +191,7 @@ Once started, each environment is accessible at:
 - RabbitMQ Management: http://localhost:25673
 
 **Production Environment:**
+
 - Frontend: http://localhost:33000
 - Backend API: http://localhost:38080
 - Swagger UI: http://localhost:38080/swagger/index.html
@@ -240,6 +250,7 @@ npm test
 ## API Documentation
 
 API documentation is available via Swagger UI at:
+
 - Development: http://localhost:18080/swagger/index.html
 - UAT: http://localhost:28080/swagger/index.html
 - Production: http://localhost:38080/swagger/index.html
@@ -303,6 +314,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Documentation
 
 Detailed documentation is available in the `docs/` directory:
+
 - [Architecture Overview](docs/architecture.md)
 - [Architecture Decision Records](docs/adr)
 - [API Reference](docs/api-reference.md)
@@ -311,6 +323,7 @@ Detailed documentation is available in the `docs/` directory:
 - [Development Workflow](docs/development-workflow.md)
 
 **Multi-Environment Setup:**
+
 - [Multi-Environment Setup Guide](docs/environments/multi-environment-setup.md)
 - [Quick Start Guide](docs/environments/multi-environment-quickstart.md)
 - [Port Reference](docs/environments/environment-port-reference.md)

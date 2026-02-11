@@ -14,9 +14,11 @@ which automatically downloads and processes LEI data from GLEIF (Global Legal En
 ## What Was Implemented
 
 ### 1. Domain Models (8,057 characters)
+
 **File**: `backend/internal/domain/lei_models.go`
 
 Created comprehensive domain models:
+
 - `LEIRecord`: 60+ fields covering entity information, addresses, registration, and audit metadata
 - `LEIRecordAudit`: Complete audit trail with record snapshots and change tracking
 - `SourceFile`: File metadata with processing status and progress tracking
@@ -24,15 +26,18 @@ Created comprehensive domain models:
 - `LEIChangeDetection`: Helper struct for change detection
 
 ### 2. Database Schema (6,838 characters)
+
 **File**: `backend/migrations/000002_create_lei_schema.up.sql`
 
 Created four new tables in the `lei_raw` schema:
+
 - `lei_raw.lei_records`: Main table with 30+ columns, unique LEI constraint, 8 indexes
 - `lei_raw.lei_records_audit`: Audit history with JSONB snapshot storage
 - `lei_raw.source_files`: File tracking with processing status and progress
 - `lei_raw.file_processing_status`: Scheduler job tracking
 
 Special features:
+
 - **Separate Schema**: `lei_raw` schema isolates raw GLEIF data from master data for permission management
 - Proper foreign key relationships (source_files → lei_records → lei_records_audit)
 - JSONB columns for flexible data storage (other_names, validation_sources, changed_fields)
@@ -40,9 +45,11 @@ Special features:
 - Pre-populated job status records
 
 ### 3. Repository Layer (9,290 characters)
+
 **File**: `backend/internal/repository/lei_repository.go`
 
 Implemented comprehensive repository with:
+
 - Full CRUD operations for LEI records
 - Intelligent upsert with field-by-field change detection
 - Automatic audit trail creation on CREATE/UPDATE/DELETE
@@ -53,9 +60,11 @@ Implemented comprehensive repository with:
 Key feature: `UpsertLEIRecord` only creates audit entries when actual data changes.
 
 ### 4. Service Layer (13,331 characters)
+
 **File**: `backend/internal/service/lei_service.go`
 
 Built complete service layer with:
+
 - **File Download**: Downloads full and delta files from GLEIF with integrity checking (SHA-256)
 - **JSON Processing**: Parses and processes GLEIF JSON files with streaming for memory efficiency
 - **Change Detection**: Only records updates when data actually changes
@@ -63,13 +72,16 @@ Built complete service layer with:
 - **Progress Tracking**: Saves progress every 1000 records
 
 GLEIF Integration:
+
 - Full file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-json/latest/download`
 - Delta file URL: `https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2-delta-json/latest/download`
 
 ### 5. Scheduler Service (7,243 characters)
+
 **File**: `backend/internal/service/scheduler_service.go`
 
 Implemented automatic scheduler with:
+
 - **Delta Sync**: Runs every hour to capture incremental changes
 - **Full Sync**: Runs weekly (Sunday at 2:00 AM) for complete refresh
 - **Concurrent Loops**: Separate goroutines for each job type
@@ -79,9 +91,11 @@ Implemented automatic scheduler with:
 Auto-starts on application startup and gracefully shuts down.
 
 ### 6. HTTP Handlers (6,227 characters)
+
 **File**: `backend/internal/handler/lei_handler.go`
 
 Created RESTful API with 8 endpoints:
+
 - Query endpoints: List, GetByCode, GetByID, GetAuditHistory
 - Control endpoints: TriggerFullSync, TriggerDeltaSync, ResumeProcessing
 - Status endpoint: GetProcessingStatus
@@ -89,14 +103,18 @@ Created RESTful API with 8 endpoints:
 All endpoints require JWT authentication and are properly documented for Swagger.
 
 ### 7. Integration
+
 **Modified Files**:
+
 - `backend/cmd/api/main.go`: Integrated scheduler, added LEI routes
 - `backend/internal/handler/handler.go`: Added LEI handler to handler struct
 - `backend/internal/repository/repository.go`: Added LEI repository
 - `backend/internal/service/service.go`: Added LEI service with data directory parameter
 
 ### 8. Documentation (16,354 characters)
+
 **Files**:
+
 - `docs/LEI_ACQUISITION.md`: Complete system documentation (10,506 characters)
 - `docs/LEI_QUICKSTART.md`: Quick start guide (5,848 characters)
 
@@ -105,6 +123,7 @@ All endpoints require JWT authentication and are properly documented for Swagger
 ### Change Detection Algorithm
 
 The system implements intelligent change detection:
+
 1. Compares old and new records field-by-field using reflection
 2. Ignores internal fields (ID, timestamps, audit fields)
 3. Handles special cases (time.Time zero values)
@@ -114,6 +133,7 @@ The system implements intelligent change detection:
 ### Resume Capability
 
 Processing can be interrupted and resumed:
+
 1. Progress saved every 1000 records
 2. `last_processed_lei` field stores checkpoint
 3. On resume, skips to last processed LEI and continues
@@ -122,6 +142,7 @@ Processing can be interrupted and resumed:
 ### Audit Trail
 
 Complete audit trail maintained:
+
 - Every CREATE/UPDATE/DELETE recorded in `lei_records_audit`
 - Full record snapshot stored as JSONB
 - Changed fields tracked with old/new values
@@ -131,6 +152,7 @@ Complete audit trail maintained:
 ### File Provenance
 
 Every record tracks its source:
+
 - `source_file_id` links to downloaded file
 - File metadata includes URL, hash, download time
 - Processing status and statistics tracked
@@ -151,17 +173,20 @@ Every record tracks its source:
 ## Testing Instructions
 
 ### 1. Apply Migrations
+
 ```bash
 cd backend
 migrate -path ./migrations -database "postgresql://user:pass@localhost/axiom?sslmode=disable" up
 ```
 
 ### 2. Start Application
+
 ```bash
 go run cmd/api/main.go
 ```
 
 Expected log output:
+
 ```text
 INFO Starting LEI scheduler service
 INFO Scheduled next full sync next_run=...
@@ -169,6 +194,7 @@ INFO Starting daily delta sync
 ```
 
 ### 3. Trigger Manual Sync
+
 ```bash
 # Get auth token
 TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
@@ -181,6 +207,7 @@ curl -X POST http://localhost:8080/api/v1/lei/sync/full \
 ```
 
 ### 4. Monitor Progress
+
 ```bash
 curl http://localhost:8080/api/v1/lei/status/DAILY_FULL \
   -H "Authorization: Bearer $TOKEN" | jq
@@ -217,6 +244,7 @@ curl http://localhost:8080/api/v1/lei/status/DAILY_FULL \
 ## Files Modified
 
 **New Files** (13 total):
+
 1. `backend/internal/domain/lei_models.go`
 2. `backend/internal/repository/lei_repository.go`
 3. `backend/internal/service/lei_service.go`
@@ -229,6 +257,7 @@ curl http://localhost:8080/api/v1/lei/status/DAILY_FULL \
 10. `docs/LEI_IMPLEMENTATION_SUMMARY.md` (this file)
 
 **Modified Files** (6 total):
+
 1. `backend/cmd/api/main.go` - Integrated LEI components and scheduler
 2. `backend/internal/handler/handler.go` - Added LEI handler
 3. `backend/internal/repository/repository.go` - Added LEI repository
@@ -263,6 +292,7 @@ Before deploying to production:
 ## Support
 
 For questions or issues:
+
 1. Review [LEI_ACQUISITION.md](./LEI_ACQUISITION.md) for detailed documentation
 2. Check [LEI_QUICKSTART.md](./LEI_QUICKSTART.md) for setup instructions
 3. Examine application logs: `backend/logs/app.log`

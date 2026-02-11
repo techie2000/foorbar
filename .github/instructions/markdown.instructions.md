@@ -50,16 +50,15 @@ Follow these guidelines for formatting and structuring your markdown content:
     ❌ BAD:
     A high-performance service that monitors directories for CSV files and converts them to JSON format with routing capabilities.
     ```
-- **Links**: Use `[link text](URL)` for links (replace URL with actual path). Ensure that the link text is
-  descriptive and the URL is valid.
+- **Links**: Use `[link text](path/to/file)` for links. Ensure that the link text is descriptive and the path is valid.
 - **File References**: **CRITICAL** - Always hyperlink file and document references. Use relative paths appropriate
   to file location.
   - ✅ **GOOD** (from `.github/instructions/`):
-    See [ADR-006](../../docs/adrs/ADR-006-message-envelope-and-provenance-metadata.md) for details
-  - ✅ **GOOD** (from `.github/instructions/`): Configuration in [routes.json.example](../../routes.json.example)
-  - ✅ **GOOD** (from `.github/instructions/`): Refer to [TESTING.md](../../TESTING.md) for test instructions
-  - ❌ **BAD**: `See ADR-006 for details` (not hyperlinked)
-  - ❌ **BAD**: `Configuration in routes.json.example` (not hyperlinked)
+    See [architecture.md](../../docs/architecture.md) for system design details
+  - ✅ **GOOD** (from `.github/instructions/`): Configuration in [config.yaml](../../backend/config.yaml)
+  - ✅ **GOOD** (from `.github/instructions/`): Refer to [README.md](../../README.md) for setup instructions
+  - ❌ **BAD**: `See architecture.md for details` (not hyperlinked)
+  - ❌ **BAD**: `Configuration in config.yaml` (not hyperlinked)
   - This applies to: ADRs, configuration files, documentation files, source code files, test files, and any other
     project artifacts
 - **Images**: Use `![alt text](IMAGE_URL)` for images (replace IMAGE_URL with actual path). Include a brief

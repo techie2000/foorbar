@@ -50,6 +50,8 @@ logs/
 
 # Docker
 docker-compose.override.yml
+compose-output.txt
+*-output.txt
 
 # Temporary files
 /tmp/

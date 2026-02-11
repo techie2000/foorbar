@@ -38,7 +38,6 @@ jobs:
           version: latest
           working-directory: ./backend
           args: --timeout=10m --verbose
-          working-directory: backend
 
   docker-lint:
     name: Dockerfile Linting

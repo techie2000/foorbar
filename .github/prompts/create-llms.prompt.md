@@ -71,7 +71,7 @@ The `llms.txt` file must follow this exact structure per the specification:
 
 #### File Link Format
 
-Each file link must follow: `[descriptive-name](relative-url): optional description`
+Each file link must follow: `\[descriptive-name](relative-url): optional description`
 
 #### Section Organization
 
@@ -167,6 +167,9 @@ Exclude files that:
 
 ## Example Structure Template
 
+**Note**: The example below shows what the OUTPUT `llms.txt` file should contain when created at the repository root.
+File paths are relative to the repository root, not to this prompt file location.
+
 ```txt
 # [Repository Name]
 
@@ -176,29 +179,25 @@ Exclude files that:
 
 ## Documentation
 
-- [Main README](../../README.md): Primary project documentation and getting started guide
-- [Contributing Guide](../../CONTRIBUTING.md): Guidelines for contributing to the project
-- [Code of Conduct](../../CODE_OF_CONDUCT.md): Community guidelines and expectations
+- [Main README](README.md): Primary project documentation and getting started guide
+- [Architecture](docs/architecture.md): System architecture and design documentation
+- [LEI Quickstart](docs/LEI_QUICKSTART.md): Quick start guide for LEI integration
 
-## Specifications
+## Setup and Configuration
 
-- [Technical Specification](../../spec/technical-spec.md): Detailed technical requirements and constraints
-- [API Specification](../../spec/api-spec.md): Interface definitions and data contracts
+- [Multi-Environment Setup](docs/environments/multi-environment-setup.md): Multi-environment configuration guide
+- [Environment Port Reference](docs/environments/environment-port-reference.md): Port mappings for dev, UAT, and production
+- [Multi-Environment Quickstart](docs/environments/multi-environment-quickstart.md): Quick start for environment setup
 
-## Examples
+## Technical Specifications
 
-- [Basic Example](../../examples/basic-usage.md): Simple usage demonstration
-- [Advanced Example](../../examples/advanced-usage.md): Complex implementation patterns
-
-## Configuration
-
-- [Setup Guide](../../docs/setup.md): Installation and configuration instructions
-- [Deployment Guide](../../docs/deployment.md): Production deployment guidelines
+- [LEI Acquisition](docs/LEI_ACQUISITION.md): Legal Entity Identifier data acquisition process
+- [LEI Implementation Summary](docs/LEI_IMPLEMENTATION_SUMMARY.md): LEI feature implementation details
 
 ## Optional
 
-- [Architecture Documentation](../../docs/architecture.md): Detailed system architecture
-- [Design Decisions](../../docs/decisions.md): Historical design decision records
+- [Makefile](Makefile): Build automation and common tasks
+- [Docker Setup](docker/README.md): Container configuration and deployment
 ```
 
 ## Success Criteria
