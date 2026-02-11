@@ -1,0 +1,44 @@
+#!/bin/sh
+# Pre-commit hook to validate markdown files
+# Install: git config core.hooksPath .githooks
+
+echo "Running markdown linting..."
+
+# Check if markdownlint-cli is installed
+if ! command -v markdownlint &> /dev/null; then
+    echo "⚠️  markdownlint-cli not found. Install with: npm install -g markdownlint-cli"
+    echo "   Skipping markdown validation..."
+    exit 0
+fi
+
+# Get list of staged markdown files
+STAGED_MD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$')
+
+if [ -z "$STAGED_MD_FILES" ]; then
+    echo "✅ No markdown files to lint"
+    exit 0
+fi
+
+echo "Linting markdown files:"
+echo "$STAGED_MD_FILES"
+
+# Run markdownlint on staged files
+if echo "$STAGED_MD_FILES" | xargs markdownlint --config .markdownlint.json; then
+    echo "✅ Markdown linting passed"
+    exit 0
+else
+    echo ""
+    echo "❌ Markdown linting failed!"
+    echo ""
+    echo "Common fixes:"
+    echo "  - MD013: Line length exceeds 120 characters - break into multiple lines"
+    echo "  - MD040: Fenced code blocks need language specifier (e.g., \`\`\`bash, \`\`\`json, \`\`\`text)"
+    echo "  - MD060: Table columns need proper spacing"
+    echo ""
+    echo "To fix automatically (where possible):"
+    echo "  make lint-docs-fix"
+    echo ""
+    echo "To skip this check (not recommended):"
+    echo "  git commit --no-verify"
+    exit 1
+fi

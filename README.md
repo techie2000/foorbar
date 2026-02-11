@@ -317,6 +317,44 @@ See [LEI Configuration](docs/LEI_ACQUISITION.md#environment-variables) for detai
 - Rate limiting to prevent abuse
 - Error messages don't expose sensitive information
 
+## Code Quality & Linting
+
+### Markdown Documentation
+
+All markdown files are validated against style rules to ensure consistency and readability:
+
+```bash
+# Check markdown files for linting issues
+make lint-docs
+
+# Auto-fix markdown issues (where possible)
+make lint-docs-fix
+
+# Run all linters (Go + Markdown)
+make lint-all
+```
+
+**Pre-commit Hooks:**
+
+Install git hooks to automatically validate markdown files before commits:
+
+```bash
+make install-hooks
+```
+
+This prevents commits with markdown linting errors (line length > 120 chars, missing code block languages,
+table formatting issues). See [.githooks/README.md](.githooks/README.md) for details.
+
+### Go Code
+
+```bash
+# Lint Go code
+make lint
+
+# Format Go code
+make fmt
+```
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details on our development workflow and code of conduct.

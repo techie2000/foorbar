@@ -1,6 +1,7 @@
 .PHONY: help build run test clean migrate-up migrate-down docker-up docker-down
 .PHONY: docker-dev-up docker-dev-down docker-uat-up docker-uat-down docker-prod-up docker-prod-down
 .PHONY: docker-all-up docker-all-down docker-all-status validate-env
+.PHONY: lint lint-docs lint-docs-fix lint-all install-hooks
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -140,6 +141,27 @@ swagger: ## Generate Swagger documentation
 lint: ## Run linter
 	cd backend && golangci-lint run
 
+lint-docs: ## Lint markdown documentation
+	@echo "Linting markdown files..."
+	@if command -v markdownlint > /dev/null 2>&1; then \
+		markdownlint --config .markdownlint.json '**/*.md' --ignore node_modules; \
+	else \
+		echo "❌ markdownlint-cli not installed. Run: make install-tools"; \
+		exit 1; \
+	fi
+
+lint-docs-fix: ## Auto-fix markdown linting issues
+	@echo "Auto-fixing markdown files..."
+	@if command -v markdownlint > /dev/null 2>&1; then \
+		markdownlint --config .markdownlint.json '**/*.md' --ignore node_modules --fix; \
+		echo "✅ Markdown auto-fix complete"; \
+	else \
+		echo "❌ markdownlint-cli not installed. Run: make install-tools"; \
+		exit 1; \
+	fi
+
+lint-all: lint lint-docs ## Run all linters (Go + Markdown)
+
 fmt: ## Format code
 	cd backend && go fmt ./...
 
@@ -147,6 +169,19 @@ install-tools: ## Install development tools
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@echo "Installing markdownlint-cli..."
+	@if command -v npm > /dev/null 2>&1; then \
+		npm install -g markdownlint-cli; \
+	else \
+		echo "⚠️  npm not found. Install Node.js to get markdownlint-cli"; \
+	fi
+
+install-hooks: ## Install git hooks for pre-commit validation
+	@echo "Installing git hooks..."
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/pre-commit
+	@echo "✅ Git hooks installed. Pre-commit validation enabled."
+	@echo "   To disable: git config --unset core.hooksPath"
 
 validate-env: ## Validate multi-environment setup
 	@bash scripts/validate-multi-env.sh

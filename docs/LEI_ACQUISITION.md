@@ -305,9 +305,11 @@ The system only records updates when actual data changes:
 The following environment variables configure LEI data acquisition and scheduling:
 
 #### LEI Data Directory
+
 - `LEI_DATA_DIR` - Directory for storing downloaded LEI files (default: `./data/lei`)
 
 #### Scheduler Configuration
+
 - `LEI_DELTA_SYNC_INTERVAL` - How often to run delta sync (default: `1h`)
   - Format: Go duration (e.g., `30m`, `1h`, `2h`)
   - Example: `LEI_DELTA_SYNC_INTERVAL=2h` for every 2 hours
@@ -326,6 +328,7 @@ The following environment variables configure LEI data acquisition and schedulin
   - Example: `LEI_CLEANUP_TIME=04:00` for 4:00 AM
 
 #### File Retention
+
 - `LEI_KEEP_FULL_FILES` - Number of full files to retain (default: `2`)
   - Each full file is ~900MB compressed, ~12GB extracted
   - Keeping 2 files (~1.8GB) allows rollback to previous week
@@ -427,7 +430,8 @@ Potential improvements:
 - [ ] Web UI for monitoring processing status
 - [ ] Metrics and analytics dashboard
 - [ ] Integration with master data reconciliation
-- [x] **Configurable sync schedules** - Implemented via environment variables (see [Environment Variables](#environment-variables) section)
+- [x] **Configurable sync schedules** - Implemented via environment variables
+  (see [Environment Variables](#environment-variables) section)
 - [ ] Webhook notifications on processing completion
 
 ## References

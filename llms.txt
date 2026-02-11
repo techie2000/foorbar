@@ -1,0 +1,53 @@
+# Axiom - Financial Services Static Data System
+
+> A modular monolith financial services platform for managing static data including countries, currencies, entities,
+> financial instruments, accounts, and settlement instructions. Built with Go (Gin/Fiber/GORM), Next.js, PostgreSQL,
+> and RabbitMQ with integrated Legal Entity Identifier (LEI) data acquisition from GLEIF.
+
+Axiom implements a CQRS architecture pattern with JWT authentication, comprehensive API documentation, and
+multi-environment deployment support (dev, UAT, production). Key features include automated LEI data synchronization,
+WebSocket support, rate limiting, Prometheus metrics, and containerized deployment via Docker Compose.
+
+## Main Documentation
+
+- [README](README.md): Primary project documentation with setup instructions and architecture overview
+- [Architecture](docs/architecture.md): System architecture, design patterns, and component interactions
+
+## Getting Started
+
+- [LEI Quick Start](docs/LEI_QUICKSTART.md): Quick start guide for LEI data acquisition and API usage
+- [Multi-Environment Quick Start](docs/environments/multi-environment-quickstart.md): Fast setup for dev/UAT/prod
+- [Environment Setup](docs/environments/multi-environment-setup.md): Comprehensive multi-environment configuration
+- [Environment Port Reference](docs/environments/environment-port-reference.md): Port mappings for all environments
+- [Environment Guide](docs/environments/README.md): Environment management overview and best practices
+
+## LEI Integration (Legal Entity Identifier)
+
+- [LEI Acquisition](docs/LEI_ACQUISITION.md): Complete LEI integration documentation with GLEIF API details
+- [LEI Implementation Summary](docs/LEI_IMPLEMENTATION_SUMMARY.md): Technical implementation details and features
+- [LEI Data Flow](docs/LEI_DATA_FLOW.md): Data processing flow diagrams and scheduler architecture
+
+## Architecture Decision Records
+
+- [ADR-0001: Modular Monolith](docs/adr/adr-0001-modular-monolith-architecture.md): Architecture pattern choice
+- [ADR-0002: Go and Gin Backend](docs/adr/adr-0002-go-gin-backend.md): Backend technology stack decisions
+- [ADR-0003: PostgreSQL and GORM](docs/adr/adr-0003-postgres-gorm.md): Database and ORM selection rationale
+- [ADR-0004: JWT Authentication](docs/adr/adr-0004-jwt-authentication.md): Authentication strategy
+- [ADR-0005: RabbitMQ Async Processing](docs/adr/adr-0005-rabbitmq-async-processing.md): Message queue integration
+- [ADR-0006: Next.js and Tailwind Frontend](docs/adr/adr-0006-nextjs-tailwind-frontend.md): Frontend stack decisions
+- [ADR-0007: Docker Compose Local Dev](docs/adr/adr-0007-docker-compose-local-dev.md): Development environment
+
+## Deployment and Infrastructure
+
+- [Docker Setup](docker/README.md): Container configuration, Dockerfiles, and deployment instructions
+- [Docker Compose Dev](docker-compose.dev.yml): Development environment definition
+- [Docker Compose UAT](docker-compose.uat.yml): User Acceptance Testing environment
+- [Docker Compose Prod](docker-compose.prod.yml): Production environment configuration
+
+## Optional
+
+- [Makefile](Makefile): Build automation, testing, linting, and development commands
+- [LEI Persistence Fix](docs/LEI_PERSISTENCE_AND_RACE_CONDITION_FIX.md): Technical fix for race condition issues
+- [Delta URL Fix](docs/DELTA_URL_FIX_SUMMARY.md): Bug fix summary for GLEIF delta URL parsing
+- [Backend Config](backend/config.yaml): Application configuration reference
+- [API Main Entry](backend/cmd/api/main.go): Backend application entry point
