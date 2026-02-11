@@ -50,8 +50,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SERVER_PORT: ${SERVER_PORT}
       SERVER_MODE: ${SERVER_MODE}
+      LEI_DATA_DIR: ${LEI_DATA_DIR}
     ports:
       - "${BACKEND_PORT}:8080"
+    volumes:
+      - lei_data_prod:/root/data/lei
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +81,7 @@ services:
 
 volumes:
   postgres_data_prod:
+  lei_data_prod:
 
 networks:
   axiom-prod:

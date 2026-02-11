@@ -15,6 +15,7 @@ type Config struct {
 	RabbitMQ RabbitMQConfig
 	Log      LogConfig
 	CORS     CORSConfig
+	LEI      LEIConfig
 }
 
 // ServerConfig holds server configuration
@@ -31,6 +32,7 @@ type DatabaseConfig struct {
 	Password string
 	Name     string
 	SSLMode  string
+	LogLevel string // silent, error, warn, info
 }
 
 // JWTConfig holds JWT configuration
@@ -54,6 +56,17 @@ type CORSConfig struct {
 	AllowedOrigins []string
 	AllowedMethods []string
 	AllowedHeaders []string
+}
+
+// LEIConfig holds LEI data acquisition and scheduling configuration
+type LEIConfig struct {
+	DataDir           string // Directory to store LEI files
+	DeltaSyncInterval string // How often to run delta sync (e.g., "1h", "2h")
+	FullSyncDay       string // Day of week for full sync (e.g., "Sunday")
+	FullSyncTime      string // Time for full sync (HH:MM format, e.g., "02:00")
+	CleanupTime       string // Time for daily cleanup (HH:MM format, e.g., "03:00")
+	KeepFullFiles     int    // Number of full files to retain
+	KeepDeltaFiles    int    // Number of delta files to retain
 }
 
 // Load loads configuration from file and environment variables
@@ -99,6 +112,7 @@ func setDefaults() {
 	viper.SetDefault("database.password", "axiom")
 	viper.SetDefault("database.name", "axiom")
 	viper.SetDefault("database.sslmode", "disable")
+	viper.SetDefault("database.loglevel", "warn") // warn suppresses 'record not found' info messages
 
 	// JWT defaults
 	viper.SetDefault("jwt.secret", "change-this-secret-in-production")
@@ -114,4 +128,13 @@ func setDefaults() {
 	viper.SetDefault("cors.allowed_origins", []string{"http://localhost:3000"})
 	viper.SetDefault("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 	viper.SetDefault("cors.allowed_headers", []string{"Origin", "Content-Type", "Authorization"})
+
+	// LEI defaults
+	viper.SetDefault("lei.datadir", "./data/lei")
+	viper.SetDefault("lei.deltasyncinterval", "1h") // Every hour
+	viper.SetDefault("lei.fullsyncday", "Sunday")   // Weekly on Sunday
+	viper.SetDefault("lei.fullsynctime", "02:00")   // 2 AM
+	viper.SetDefault("lei.cleanuptime", "03:00")    // 3 AM
+	viper.SetDefault("lei.keepfullfiles", 2)        // Keep 2 full files (~1.8GB)
+	viper.SetDefault("lei.keepdeltafiles", 5)       // Keep 5 delta files (~65MB)
 }

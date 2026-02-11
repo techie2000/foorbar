@@ -270,6 +270,7 @@ database:
   name: axiom
   user: axiom
   password: ${DB_PASSWORD}
+  loglevel: warn  # silent, error, warn, info
 
 rabbitmq:
   url: amqp://guest:guest@localhost:5672/
@@ -278,12 +279,25 @@ jwt:
   secret: ${JWT_SECRET}
   expiry: 24h
 
+lei:
+  datadir: ./data/lei
+  deltasyncinterval: 1h      # How often to sync delta files
+  fullsyncday: Sunday         # Day for full sync
+  fullsynctime: "02:00"       # Time for full sync (HH:MM)
+  cleanuptime: "03:00"        # Time for file cleanup (HH:MM)
+  keepfullfiles: 2            # Retain last N full files (~1.8GB)
+  keepdeltafiles: 5           # Retain last N delta files (~65MB)
+
 server:
   port: 8080
   cors:
     allowed_origins:
       - http://localhost:3000
 ```
+
+**Environment Variables:** All config values can be set via environment variables using uppercase with underscores (e.g., `DATABASE_LOGLEVEL`, `LEI_DELTA_SYNC_INTERVAL`).
+
+See [LEI Configuration](docs/LEI_ACQUISITION.md#environment-variables) for detailed scheduler options.
 
 ## Performance Optimization
 

@@ -50,8 +50,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SERVER_PORT: ${SERVER_PORT}
       SERVER_MODE: ${SERVER_MODE}
+      LEI_DATA_DIR: ${LEI_DATA_DIR}
     ports:
       - "${BACKEND_PORT}:8080"
+    volumes:
+      - ./data/lei:/root/data/lei  # Bind mount for easy dev access
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +81,7 @@ services:
 
 volumes:
   postgres_data_dev:
+  # lei_data_dev removed - using bind mount in dev for easy filesystem access
 
 networks:
   axiom-dev:

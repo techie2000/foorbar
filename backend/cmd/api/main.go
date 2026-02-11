@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,10 +20,11 @@ import (
 	"github.com/techie2000/axiom/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 
-	_ "github.com/techie2000/axiom/docs" // Swagger docs
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "github.com/techie2000/axiom/docs" // Swagger docs
 )
 
 // @title Axiom API
@@ -64,8 +66,8 @@ func main() {
 	// Initialize repositories
 	repos := repository.NewRepositories(db)
 
-	// LEI data directory
-	leiDataDir := "./data/lei"
+	// LEI data directory from config
+	leiDataDir := cfg.LEI.DataDir
 	if err := os.MkdirAll(leiDataDir, 0755); err != nil {
 		log.Fatalf("Failed to create LEI data directory: %v", err)
 	}
@@ -73,9 +75,9 @@ func main() {
 	// Initialize services
 	services := service.NewServices(repos, leiDataDir)
 
-	// Initialize scheduler service for LEI data acquisition
-	schedulerService := service.NewSchedulerService(services.LEI)
-	
+	// Initialize scheduler service for LEI data acquisition (with config for schedules)
+	schedulerService := service.NewSchedulerService(services.LEI, cfg)
+
 	// Start scheduler
 	if err := schedulerService.Start(); err != nil {
 		log.Fatalf("Failed to start scheduler: %v", err)
@@ -133,7 +135,13 @@ func connectDatabase(cfg *config.Config) (*gorm.DB, error) {
 		cfg.Database.SSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Configure GORM logger based on DATABASE_LOGLEVEL
+	logLevel := parseGORMLogLevel(cfg.Database.LogLevel)
+	gormConfig := &gorm.Config{
+		Logger: gormLogger.Default.LogMode(logLevel),
+	}
+
+	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +156,23 @@ func connectDatabase(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	logger.Info().Msg("Database connection established")
+	logger.Info().Msgf("Database connection established (log level: %s)", cfg.Database.LogLevel)
 	return db, nil
+}
+
+func parseGORMLogLevel(level string) gormLogger.LogLevel {
+	switch strings.ToLower(level) {
+	case "silent":
+		return gormLogger.Silent
+	case "error":
+		return gormLogger.Error
+	case "warn", "warning":
+		return gormLogger.Warn
+	case "info":
+		return gormLogger.Info
+	default:
+		return gormLogger.Warn // Default to warn for production
+	}
 }
 
 func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {

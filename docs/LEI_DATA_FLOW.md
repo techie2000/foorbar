@@ -227,10 +227,18 @@ stateDiagram-v2
 
 ## Schedule Configuration
 
-| Job Type | Frequency | Description |
-|----------|-----------|-------------|
-| Delta Sync | Every 1 hour | Incremental updates from GLEIF |
-| Full Sync | Weekly (Sunday 2 AM) | Complete refresh of all records |
+All schedules are configurable via environment variables. Defaults shown below:
+
+| Job Type | Frequency | Environment Variable | Default Value |
+|----------|-----------|----------------------|---------------|
+| Delta Sync | Every 1 hour | `LEI_DELTA_SYNC_INTERVAL` | `1h` |
+| Full Sync | Weekly (Sunday) | `LEI_FULL_SYNC_DAY` | `Sunday` |
+| Full Sync Time | 2:00 AM | `LEI_FULL_SYNC_TIME` | `02:00` |
+| File Cleanup | 3:00 AM daily | `LEI_CLEANUP_TIME` | `03:00` |
+| Retain Full Files | Last 2 files | `LEI_KEEP_FULL_FILES` | `2` |
+| Retain Delta Files | Last 5 files | `LEI_KEEP_DELTA_FILES` | `5` |
+
+**Note:** Invalid values fall back to defaults. See [LEI_ACQUISITION.md](LEI_ACQUISITION.md#environment-variables) for format details.
 
 ## Performance Metrics
 

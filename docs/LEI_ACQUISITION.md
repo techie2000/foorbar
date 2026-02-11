@@ -302,10 +302,41 @@ The system only records updates when actual data changes:
 
 ### Environment Variables
 
-No specific environment variables required. The system uses:
+The following environment variables configure LEI data acquisition and scheduling:
 
-- Database configuration from existing config
-- Data directory: `./data/lei` (created automatically)
+#### LEI Data Directory
+- `LEI_DATA_DIR` - Directory for storing downloaded LEI files (default: `./data/lei`)
+
+#### Scheduler Configuration
+- `LEI_DELTA_SYNC_INTERVAL` - How often to run delta sync (default: `1h`)
+  - Format: Go duration (e.g., `30m`, `1h`, `2h`)
+  - Example: `LEI_DELTA_SYNC_INTERVAL=2h` for every 2 hours
+
+- `LEI_FULL_SYNC_DAY` - Day of week for full sync (default: `Sunday`)
+  - Format: Day name (case-insensitive)
+  - Valid: `Sunday`, `Monday`, `Tuesday`, `Wednesday`, `Thursday`, `Friday`, `Saturday`
+  - Short forms accepted: `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`
+
+- `LEI_FULL_SYNC_TIME` - Time of day for full sync (default: `02:00`)
+  - Format: `HH:MM` in 24-hour format
+  - Example: `LEI_FULL_SYNC_TIME=01:30` for 1:30 AM
+
+- `LEI_CLEANUP_TIME` - Time of day for daily file cleanup (default: `03:00`)
+  - Format: `HH:MM` in 24-hour format
+  - Example: `LEI_CLEANUP_TIME=04:00` for 4:00 AM
+
+#### File Retention
+- `LEI_KEEP_FULL_FILES` - Number of full files to retain (default: `2`)
+  - Each full file is ~900MB compressed, ~12GB extracted
+  - Keeping 2 files (~1.8GB) allows rollback to previous week
+
+- `LEI_KEEP_DELTA_FILES` - Number of delta files to retain (default: `5`)
+  - Each delta file is ~13MB compressed
+  - Keeping 5 files (~65MB) covers 5 hours of changes
+
+**Total retained disk space:** ~2GB maximum with defaults
+
+**Validation:** Invalid values fall back to defaults with warning logs. Service continues uninterrupted.
 
 ### File Storage
 
@@ -396,7 +427,7 @@ Potential improvements:
 - [ ] Web UI for monitoring processing status
 - [ ] Metrics and analytics dashboard
 - [ ] Integration with master data reconciliation
-- [ ] Configurable sync schedules
+- [x] **Configurable sync schedules** - Implemented via environment variables (see [Environment Variables](#environment-variables) section)
 - [ ] Webhook notifications on processing completion
 
 ## References

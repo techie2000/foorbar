@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -90,6 +92,9 @@ type LEIService interface {
 	// Processing status
 	GetProcessingStatus(jobType string) (*domain.FileProcessingStatus, error)
 	UpdateProcessingStatus(status *domain.FileProcessingStatus) error
+
+	// File cleanup
+	CleanupOldFiles(keepFullFiles, keepDeltaFiles int) error
 }
 
 type leiService struct {
@@ -676,4 +681,103 @@ func (s *leiService) GetProcessingStatus(jobType string) (*domain.FileProcessing
 // UpdateProcessingStatus updates processing status
 func (s *leiService) UpdateProcessingStatus(status *domain.FileProcessingStatus) error {
 	return s.repo.UpdateProcessingStatus(status)
+}
+
+// CleanupOldFiles removes old LEI files to free disk space
+// Keeps the most recent N full files and N delta files
+func (s *leiService) CleanupOldFiles(keepFullFiles, keepDeltaFiles int) error {
+	log.Info().
+		Int("keep_full", keepFullFiles).
+		Int("keep_delta", keepDeltaFiles).
+		Msg("Starting LEI file cleanup")
+
+	// Read all files in data directory
+	files, err := os.ReadDir(s.dataDir)
+	if err != nil {
+		return fmt.Errorf("failed to read data directory: %w", err)
+	}
+
+	// Separate files by type
+	var fullFiles, deltaFiles []os.DirEntry
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		name := file.Name()
+		if strings.Contains(name, "FULL") {
+			fullFiles = append(fullFiles, file)
+		} else if strings.Contains(name, "DELTA") {
+			deltaFiles = append(deltaFiles, file)
+		}
+	}
+
+	// Sort by modification time (newest first)
+	sortByModTimeDesc := func(files []os.DirEntry) {
+		sort.Slice(files, func(i, j int) bool {
+			infoI, _ := files[i].Info()
+			infoJ, _ := files[j].Info()
+			return infoI.ModTime().After(infoJ.ModTime())
+		})
+	}
+
+	sortByModTimeDesc(fullFiles)
+	sortByModTimeDesc(deltaFiles)
+
+	// Remove old full files
+	removedCount := 0
+	var totalSize int64
+
+	for i, file := range fullFiles {
+		if i < keepFullFiles {
+			continue // Keep recent files
+		}
+		filePath := filepath.Join(s.dataDir, file.Name())
+		info, err := file.Info()
+		if err != nil {
+			log.Warn().Err(err).Str("file", file.Name()).Msg("Failed to get file info")
+			continue
+		}
+		if err := os.Remove(filePath); err != nil {
+			log.Warn().Err(err).Str("file", file.Name()).Msg("Failed to remove old file")
+		} else {
+			log.Info().
+				Str("file", file.Name()).
+				Int64("size_mb", info.Size()/1024/1024).
+				Msg("Removed old full file")
+			removedCount++
+			totalSize += info.Size()
+		}
+	}
+
+	// Remove old delta files
+	for i, file := range deltaFiles {
+		if i < keepDeltaFiles {
+			continue // Keep recent files
+		}
+		filePath := filepath.Join(s.dataDir, file.Name())
+		info, err := file.Info()
+		if err != nil {
+			log.Warn().Err(err).Str("file", file.Name()).Msg("Failed to get file info")
+			continue
+		}
+		if err := os.Remove(filePath); err != nil {
+			log.Warn().Err(err).Str("file", file.Name()).Msg("Failed to remove old file")
+		} else {
+			log.Info().
+				Str("file", file.Name()).
+				Int64("size_mb", info.Size()/1024/1024).
+				Msg("Removed old delta file")
+			removedCount++
+			totalSize += info.Size()
+		}
+	}
+
+	log.Info().
+		Int("removed_count", removedCount).
+		Int64("freed_mb", totalSize/1024/1024).
+		Int("full_remaining", len(fullFiles)-removedCount).
+		Int("delta_remaining", len(deltaFiles)).
+		Msg("Cleanup completed successfully")
+
+	return nil
 }
