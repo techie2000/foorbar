@@ -15,6 +15,7 @@ Quick reference card for Axiom multi-environment port mappings.
 ## Quick Access URLs
 
 ### Development Environment
+
 ```bash
 Frontend:           http://localhost:13000
 Backend API:        http://localhost:18080
@@ -25,6 +26,7 @@ Database:           psql -h localhost -p 15432 -U axiom -d axiom_dev
 ```
 
 ### UAT Environment
+
 ```bash
 Frontend:           http://localhost:23000
 Backend API:        http://localhost:28080
@@ -35,6 +37,7 @@ Database:           psql -h localhost -p 25432 -U axiom -d axiom_uat
 ```
 
 ### Production Environment
+
 ```bash
 Frontend:           http://localhost:33000
 Backend API:        http://localhost:38080
@@ -57,18 +60,21 @@ This allows easy identification of which environment a port belongs to.
 Containers follow the pattern: `axiom-{env}-{service}`
 
 **Development:**
+
 - axiom-dev-frontend
 - axiom-dev-backend
 - axiom-dev-postgres
 - axiom-dev-rabbitmq
 
 **UAT:**
+
 - axiom-uat-frontend
 - axiom-uat-backend
 - axiom-uat-postgres
 - axiom-uat-rabbitmq
 
 **Production:**
+
 - axiom-prod-frontend
 - axiom-prod-backend
 - axiom-prod-postgres
@@ -113,11 +119,13 @@ make migrate-prod-up
 ## Default Credentials
 
 **PostgreSQL:**
+
 - Dev: axiom / axiom_dev_pass
 - UAT: axiom / axiom_uat_pass
 - Prod: axiom / axiom_prod_pass
 
 **RabbitMQ:**
+
 - All environments: guest / guest
 
 ⚠️ **Security Note**: Change these credentials for actual production use!

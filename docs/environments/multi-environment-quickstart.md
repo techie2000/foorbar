@@ -64,6 +64,7 @@ make migrate-prod-up
 ## Access URLs
 
 ### Development Environment
+
 - **Frontend**: http://localhost:13000
 - **Backend API**: http://localhost:18080/api/v1
 - **Swagger UI**: http://localhost:18080/swagger/index.html
@@ -71,6 +72,7 @@ make migrate-prod-up
 - **PostgreSQL**: `psql -h localhost -p 15432 -U axiom -d axiom_dev`
 
 ### UAT Environment
+
 - **Frontend**: http://localhost:23000
 - **Backend API**: http://localhost:28080/api/v1
 - **Swagger UI**: http://localhost:28080/swagger/index.html
@@ -78,6 +80,7 @@ make migrate-prod-up
 - **PostgreSQL**: `psql -h localhost -p 25432 -U axiom -d axiom_uat`
 
 ### Production Environment
+
 - **Frontend**: http://localhost:33000
 - **Backend API**: http://localhost:38080/api/v1
 - **Swagger UI**: http://localhost:38080/swagger/index.html
@@ -222,6 +225,7 @@ docker logs axiom-prod-frontend
 ## Environment Variables
 
 Each environment has its own `.env` file:
+
 - `.env.dev` - Development configuration
 - `.env.uat` - UAT configuration
 - `.env.prod` - Production configuration

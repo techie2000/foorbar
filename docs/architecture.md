@@ -98,6 +98,7 @@ graph LR
 ### Microservices Communication
 
 While deployed as a monolith, internal services communicate through:
+
 - Direct function calls (in-process)
 - Event bus (RabbitMQ) for async operations
 - Shared database (with schema separation)
