@@ -20,18 +20,18 @@ type LEIRepository interface {
 	UpdateLEIRecord(record *domain.LEIRecord) error
 	UpsertLEIRecord(record *domain.LEIRecord) (bool, error) // Returns true if updated, false if created
 	DeleteLEI(id string) error
-	
+
 	// Source File operations
 	CreateSourceFile(file *domain.SourceFile) error
 	FindSourceFileByID(id string) (*domain.SourceFile, error)
 	FindLatestSourceFile(fileType string) (*domain.SourceFile, error)
 	UpdateSourceFile(file *domain.SourceFile) error
 	FindPendingSourceFiles() ([]*domain.SourceFile, error)
-	
+
 	// File Processing Status operations
 	FindProcessingStatus(jobType string) (*domain.FileProcessingStatus, error)
 	UpdateProcessingStatus(status *domain.FileProcessingStatus) error
-	
+
 	// Audit operations
 	CreateAuditRecord(audit *domain.LEIRecordAudit) error
 	FindAuditHistoryByLEI(lei string, limit int) ([]*domain.LEIRecordAudit, error)
@@ -87,7 +87,7 @@ func (r *leiRepository) UpdateLEIRecord(record *domain.LEIRecord) error {
 // Returns true if updated, false if created
 func (r *leiRepository) UpsertLEIRecord(record *domain.LEIRecord) (bool, error) {
 	existing, err := r.FindLEIByLEI(record.LEI)
-	
+
 	// If not found, create new record
 	if err == gorm.ErrRecordNotFound {
 		record.CreatedBy = "system"
@@ -95,52 +95,53 @@ func (r *leiRepository) UpsertLEIRecord(record *domain.LEIRecord) (bool, error) 
 		if err := r.CreateLEIRecord(record); err != nil {
 			return false, err
 		}
-		
+
 		// Create audit record for creation
 		auditRecord := &domain.LEIRecordAudit{
 			LEIRecordID:    record.ID,
 			LEI:            record.LEI,
 			Action:         "CREATE",
 			RecordSnapshot: r.recordToJSON(record),
+			ChangedFields:  "{}",
 			SourceFileID:   record.SourceFileID,
 			ChangedBy:      "system",
 		}
 		if err := r.CreateAuditRecord(auditRecord); err != nil {
 			return false, fmt.Errorf("failed to create audit record: %w", err)
 		}
-		
+
 		return false, nil
 	}
-	
+
 	if err != nil {
 		return false, err
 	}
-	
+
 	// Detect changes
 	changes := r.detectChanges(existing, record)
-	
+
 	// If no changes detected, don't update
 	if len(changes) == 0 {
 		return false, nil
 	}
-	
+
 	// Convert changes to JSON
 	changesJSON, err := json.Marshal(changes)
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal changes: %w", err)
 	}
-	
+
 	// Update the record
 	record.ID = existing.ID
 	record.CreatedAt = existing.CreatedAt
 	record.CreatedBy = existing.CreatedBy
 	record.UpdatedBy = "system"
 	record.ChangedFields = string(changesJSON)
-	
+
 	if err := r.UpdateLEIRecord(record); err != nil {
 		return false, err
 	}
-	
+
 	// Create audit record for update
 	auditRecord := &domain.LEIRecordAudit{
 		LEIRecordID:    record.ID,
@@ -154,7 +155,7 @@ func (r *leiRepository) UpsertLEIRecord(record *domain.LEIRecord) (bool, error) 
 	if err := r.CreateAuditRecord(auditRecord); err != nil {
 		return false, fmt.Errorf("failed to create audit record: %w", err)
 	}
-	
+
 	return true, nil
 }
 
@@ -165,18 +166,19 @@ func (r *leiRepository) DeleteLEI(id string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Soft delete
 	if err := r.db.Delete(&domain.LEIRecord{}, "id = ?", id).Error; err != nil {
 		return err
 	}
-	
+
 	// Create audit record for deletion
 	auditRecord := &domain.LEIRecordAudit{
 		LEIRecordID:    record.ID,
 		LEI:            record.LEI,
 		Action:         "DELETE",
 		RecordSnapshot: r.recordToJSON(record),
+		ChangedFields:  "{}",
 		ChangedBy:      "system",
 	}
 	return r.CreateAuditRecord(auditRecord)
@@ -256,25 +258,25 @@ func (r *leiRepository) FindAuditHistoryByLEI(lei string, limit int) ([]*domain.
 // detectChanges compares two LEI records and returns a map of changed fields
 func (r *leiRepository) detectChanges(old, new *domain.LEIRecord) map[string]domain.LEIChangeDetection {
 	changes := make(map[string]domain.LEIChangeDetection)
-	
+
 	oldVal := reflect.ValueOf(*old)
 	newVal := reflect.ValueOf(*new)
 	oldType := oldVal.Type()
-	
+
 	for i := 0; i < oldVal.NumField(); i++ {
 		field := oldType.Field(i)
 		fieldName := field.Name
-		
+
 		// Skip internal fields and timestamps
-		if fieldName == "ID" || fieldName == "CreatedAt" || fieldName == "UpdatedAt" || 
-		   fieldName == "DeletedAt" || fieldName == "CreatedBy" || fieldName == "UpdatedBy" || 
-		   fieldName == "ChangedFields" || fieldName == "SourceFile" || fieldName == "SourceFileID" {
+		if fieldName == "ID" || fieldName == "CreatedAt" || fieldName == "UpdatedAt" ||
+			fieldName == "DeletedAt" || fieldName == "CreatedBy" || fieldName == "UpdatedBy" ||
+			fieldName == "ChangedFields" || fieldName == "SourceFile" || fieldName == "SourceFileID" {
 			continue
 		}
-		
+
 		oldFieldVal := oldVal.Field(i).Interface()
 		newFieldVal := newVal.Field(i).Interface()
-		
+
 		// Compare values
 		if !reflect.DeepEqual(oldFieldVal, newFieldVal) {
 			// Special handling for time.Time zero values
@@ -285,7 +287,7 @@ func (r *leiRepository) detectChanges(old, new *domain.LEIRecord) map[string]dom
 					continue
 				}
 			}
-			
+
 			changes[fieldName] = domain.LEIChangeDetection{
 				FieldName: fieldName,
 				OldValue:  oldFieldVal,
@@ -293,7 +295,7 @@ func (r *leiRepository) detectChanges(old, new *domain.LEIRecord) map[string]dom
 			}
 		}
 	}
-	
+
 	return changes
 }
 

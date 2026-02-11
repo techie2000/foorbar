@@ -567,6 +567,10 @@ func (s *leiService) jsonToDomainRecord(jsonRecord *LEIJSONRecord, sourceFileID 
 		EntityStatus:           jsonRecord.Entity.EntityStatus.Value,
 		ManagingLOU:            jsonRecord.Registration.ManagingLOU.Value,
 		SourceFileID:           &sourceFileID,
+		// Initialize JSONB fields with valid JSON
+		OtherNames:        "[]",
+		ValidationSources: "{}",
+		ChangedFields:     "{}",
 	}
 
 	// Handle additional address lines
