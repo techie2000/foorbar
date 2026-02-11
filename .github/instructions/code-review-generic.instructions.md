@@ -12,10 +12,7 @@ architecture review.
 
 ## Review Language
 
-When performing a code review, respond in **English** (or specify your preferred language).
-
-> **Customization Tip**: Change to your preferred language by replacing "English" with "Portuguese (Brazilian)",
-> "Spanish", "French", etc.
+When performing a code review, respond in **English**
 
 ## Review Priorities
 
@@ -376,23 +373,99 @@ When performing a code review, systematically verify:
 
 ## Project-Specific Customizations
 
-To customize this template for your project, add sections for:
+### 1. Language/Framework Specific Checks
 
-1. **Language/Framework specific checks**
-   - Example: "When performing a code review, verify React hooks follow rules of hooks"
-   - Example: "When performing a code review, check Spring Boot controllers use proper annotations"
+#### Go Backend (Gin, GORM, Fiber, Beego)
+When performing a code review of Go code:
+- **Package Declarations**: Verify NO duplicate `package` declarations in files - each file must have exactly ONE package declaration at the top
+- **Package Naming**: Verify package names match directory names (e.g., files in `handler/` must have `package handler`)
+- **Import Organization**: Check imports are grouped: standard library, external packages, internal packages (separated by blank lines)
+- **Error Handling**: Verify all errors are checked and handled appropriately (no ignored errors)
+- **Context Usage**: Verify `context.Context` is the first parameter in functions that need it
+- **GORM Queries**: Check for proper `WHERE` clauses, pagination, and index usage to prevent N+1 queries
+- **Middleware Order**: Verify middleware is applied in correct order: Auth → CORS → Rate Limit → Logging → Handler
+- **Idiomatic Go**: Verify early returns to reduce nesting, keep happy path left-aligned
+- **Receiver Naming**: Verify receiver names are short (1-2 chars), consistent within a type
+- **Acronym Casing**: Verify acronyms are all uppercase (e.g., `HTTPServer`, `URLParser`, `IDToken`)
 
-2. **Build and deployment**
-   - Example: "When performing a code review, verify CI/CD pipeline configuration is correct"
-   - Example: "When performing a code review, check database migrations are reversible"
+#### Next.js Frontend (React 19, TypeScript)
+When performing a code review of frontend code:
+- **React Hooks**: Verify hooks follow Rules of Hooks (only at top level, only in React functions)
+- **Component Structure**: Check components use Next.js 15 App Router patterns (app directory structure)
+- **TypeScript**: Verify proper type annotations, no `any` types without justification
+- **Tailwind CSS**: Check utility classes are used correctly, avoid inline styles
+- **shadcn/ui Components**: Verify components follow shadcn/ui patterns for consistency
+- **API Routes**: Verify Next.js API routes use proper HTTP methods and status codes
 
-3. **Business logic rules**
-   - Example: "When performing a code review, verify pricing calculations include all applicable taxes"
-   - Example: "When performing a code review, check user consent is obtained before data processing"
+#### Docker Containerization
+When performing a code review involving Docker:
+- **Multi-stage Builds**: Verify Dockerfiles use multi-stage builds for smaller images
+- **Layer Caching**: Check COPY commands are ordered for optimal layer caching
+- **Security**: Verify no secrets in Dockerfiles or images, use build args or runtime secrets
+- **Base Images**: Check base images are specific versions (not `latest`) for reproducibility
+- **Health Checks**: Verify containers have appropriate HEALTHCHECK instructions
 
-4. **Team conventions**
-   - Example: "When performing a code review, verify commit messages follow conventional commits format"
-   - Example: "When performing a code review, check branch names follow pattern: type/ticket-description"
+### 2. Build and Deployment
+
+When performing a code review involving build/deployment:
+- **Database Migrations**: Verify all `.up.sql` migrations have corresponding `.down.sql` for reversibility
+- **Migration Naming**: Check migrations follow pattern `XXXXXX_description.up.sql` / `XXXXXX_description.down.sql`
+- **Multi-Environment Config**: Verify changes work across all environments (dev, uat, prod) using appropriate docker-compose files
+- **Environment Variables**: Check all required env vars are documented and have sensible defaults where appropriate
+- **Port Assignments**: Verify ports follow the project's environment port reference (see [environment-port-reference.md](docs/environments/environment-port-reference.md))
+- **Service Dependencies**: Check docker-compose `depends_on` correctly reflects service startup order
+- **Volume Mounts**: Verify volume mounts are correct for dev vs prod environments
+- **Health Checks**: Confirm services have proper health checks for orchestration
+
+### 3. Business Logic Rules
+
+When performing a code review involving business logic:
+- **CQRS Pattern**: Verify commands (writes) and queries (reads) are properly separated
+- **LEI Data Validation**: Check LEI codes match format: 20 alphanumeric characters
+- **ADR-003 Contract** (CSV/JSON Conversion):
+  - All values remain strings (no type coercion: `"30"` stays `"30"`)
+  - Empty fields become `""`, NEVER `null`
+  - Single rows produce arrays, not objects
+  - Row order is preserved
+  - Invalid files are rejected, not silently fixed
+- **Financial Data Integrity**: Verify proper validation of:
+  - ISO country codes (2-letter)
+  - ISO currency codes (3-letter)
+  - Account numbers and SSI details
+  - Entity identifiers
+- **Audit Logging**: Check all data mutations are logged with user, timestamp, and change details
+- **Event Publishing**: Verify async operations publish events to RabbitMQ for proper tracking
+- **Transaction Boundaries**: Check database transactions are properly scoped (not too large, not missing)
+
+### 4. Team Conventions
+
+When performing a code review:
+- **Test-Driven Maintenance**: Verify EVERY code change includes corresponding test updates or new tests
+  - New functions must have test functions
+  - Modified functions must update existing tests
+  - Changed signatures must update all test calls
+  - Validation changes must add test cases
+- **Test Coverage**: Check that module test coverage remains >70% (use `go test -cover ./...`)
+- **Test Naming**: Verify tests follow pattern: `Test[FunctionName][Scenario]`
+- **Documentation Updates**: Check README.md and relevant docs are updated for user-facing changes
+  - API changes → update API documentation
+  - Configuration changes → update config documentation
+  - Feature additions → update feature documentation
+- **Version Management**: For releases, verify:
+  - VERSION file is updated
+  - version.go is updated
+  - CHANGELOG.md includes release notes
+- **Commit Convention**: Verify commits follow conventional commits format:
+  - `feat:` for new features
+  - `fix:` for bug fixes
+  - `docs:` for documentation
+  - `refactor:` for code refactoring
+  - `test:` for test changes
+  - `chore:` for maintenance tasks
+- **Branch Naming**: Check branches follow pattern: `type/description` (e.g., `feat/lei-integration`, `fix/auth-bug`)
+- **Import Paths**: Verify internal imports use `github.com/techie2000/axiom/backend/...` module path
+- **Logging**: Check structured logging with proper levels (debug, info, warn, error) using zerolog
+- **API Documentation**: Verify Swagger annotations are updated for API changes
 
 ## Additional Resources
 
@@ -418,10 +491,14 @@ When performing a code review, apply these prompt engineering principles from th
 
 ## Project Context
 
-This is a generic template. Customize this section with your project-specific information:
+**Axiom - Financial Services Static Data System**
 
-- **Tech Stack**: [e.g., Java 17, Spring Boot 3.x, PostgreSQL]
-- **Architecture**: [e.g., Hexagonal/Clean Architecture, Microservices]
-- **Build Tool**: [e.g., Gradle, Maven, npm, pip]
-- **Testing**: [e.g., JUnit 5, Jest, pytest]
-- **Code Style**: [e.g., follows Google Style Guide]
+- **Tech Stack**: 
+  - Backend: Go 1.24, Gin/Fiber/Beego, GORM, PostgreSQL, RabbitMQ
+  - Frontend: Next.js 15, React 19, TypeScript 5.3, Tailwind CSS 3.4, shadcn/ui
+  - Infrastructure: Docker, Docker Compose, nginx (planned)
+- **Architecture**: Modular Monolith with clear layer separation, CQRS pattern for reads/writes
+- **Build Tool**: Go modules (`go.mod`), npm for frontend, Make for automation
+- **Testing**: Go testing package with table-driven tests, >70% coverage target
+- **Code Style**: Follows Effective Go and Go Code Review Comments (see [go.instructions.md](.github/instructions/go.instructions.md))
+- **Module Path**: `github.com/techie2000/axiom/backend`
