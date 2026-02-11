@@ -301,7 +301,7 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	if err := s.processJSONFile(jsonPath, sourceFile, resumeFromLEI); err != nil {
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
-		
+
 		// Categorize the failure for retry logic
 		errorMsg := err.Error()
 		if strings.Contains(errorMsg, "column") && strings.Contains(errorMsg, "does not exist") {
@@ -315,14 +315,14 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 		} else {
 			sourceFile.FailureCategory = "UNKNOWN"
 		}
-		
+
 		log.Warn().
 			Str("failure_category", sourceFile.FailureCategory).
 			Int("retry_count", sourceFile.RetryCount).
 			Int("max_retries", sourceFile.MaxRetries).
 			Bool("can_retry", sourceFile.RetryCount < sourceFile.MaxRetries).
 			Msg("File processing failed with categorized error")
-		
+
 		s.repo.UpdateSourceFile(sourceFile)
 		return fmt.Errorf("failed to process JSON file: %w", err)
 	}
@@ -473,7 +473,7 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 		Int("starting_failed", failedRecords).
 		Str("resume_from", resumeFromLEI).
 		Msg("Starting array processing with counters")
-	
+
 	// Start heartbeat ticker for progress monitoring (every 15 seconds)
 	heartbeatTicker := time.NewTicker(15 * time.Second)
 	defer heartbeatTicker.Stop()
@@ -486,18 +486,18 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			elapsed := time.Since(lastHeartbeatTime).Seconds()
 			recordsSinceLastHeartbeat := processedRecords - lastHeartbeatProcessed
 			rate := float64(recordsSinceLastHeartbeat) / elapsed
-			
+
 			remainingRecords := totalRecords - processedRecords
 			etaSeconds := 0.0
 			if rate > 0 {
 				etaSeconds = float64(remainingRecords) / rate
 			}
-			
+
 			percentComplete := 0.0
 			if totalRecords > 0 {
 				percentComplete = (float64(processedRecords) / float64(totalRecords)) * 100
 			}
-			
+
 			log.Info().
 				Int("total_records", totalRecords).
 				Int("processed_records", processedRecords).
@@ -507,12 +507,12 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 				Float64("eta_seconds", etaSeconds).
 				Str("last_lei", lastProcessedLEI).
 				Msg("HEARTBEAT: LEI import in progress")
-			
+
 			lastHeartbeatTime = time.Now()
 			lastHeartbeatProcessed = processedRecords
 		}
 	}()
-	
+
 	const batchSize = 1000
 	batch := make([]*domain.LEIRecord, 0, batchSize)
 
@@ -541,7 +541,7 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			return fmt.Errorf("batch upsert failed: %w", err)
 		} else {
 			processedRecords += created + updated
-			
+
 			// Update progress after each batch
 			sourceFile.TotalRecords = totalRecords
 			sourceFile.ProcessedRecords = processedRecords

@@ -55,6 +55,7 @@ services:
       - "${BACKEND_PORT}:8080"
     volumes:
       - ./data/lei:/root/data/lei  # Bind mount for easy dev access
+      - ./log:/root/log              # Persist logs for debugging
     depends_on:
       postgres:
         condition: service_healthy

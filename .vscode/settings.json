@@ -20,6 +20,7 @@
         "functools",
         "Getenv",
         "gleif",
+        "GLEIFJSON",
         "goarch",
         "godoc",
         "GOINSECURE",
@@ -37,6 +38,7 @@
         "ITSM",
         "joinedload",
         "jsonschema",
+        "LEIJSON",
         "llms",
         "LOGLEVEL",
         "maxsize",
@@ -130,6 +132,7 @@
         "mkdir": true,
         "psql": true,
         "Tee-Object": true,
-        "go": true
+        "go": true,
+        "sqlfluff": true
     }
 }

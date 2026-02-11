@@ -197,6 +197,9 @@ func (s *schedulerService) Start() error {
 	s.running = true
 	log.Info().Msg("Starting LEI scheduler service")
 
+	// CRITICAL: Reset any stuck RUNNING statuses from previous crashes/restarts
+	s.cleanupStuckJobStatuses()
+
 	// Start goroutine for daily delta sync (runs every hour to check for updates)
 	go s.dailyDeltaSyncLoop()
 
@@ -218,6 +221,44 @@ func (s *schedulerService) Stop() {
 	log.Info().Msg("Stopping LEI scheduler service")
 	s.running = false
 	close(s.stopChan)
+}
+
+// cleanupStuckJobStatuses resets any jobs stuck in RUNNING status
+// This handles crash recovery and ensures clean startup
+func (s *schedulerService) cleanupStuckJobStatuses() {
+	log.Info().Msg("Checking for stuck job statuses from previous sessions")
+
+	// Check DAILY_FULL status
+	fullStatus, err := s.leiService.GetProcessingStatus("DAILY_FULL")
+	if err == nil && fullStatus.Status == "RUNNING" {
+		log.Warn().
+			Str("job_type", "DAILY_FULL").
+			Time("last_run", *fullStatus.LastRunAt).
+			Msg("Resetting stuck RUNNING status to IDLE (process was interrupted)")
+		fullStatus.Status = "IDLE"
+		fullStatus.CurrentSourceFileID = nil
+		fullStatus.ErrorMessage = "Previous run was interrupted"
+		if err := s.leiService.UpdateProcessingStatus(fullStatus); err != nil {
+			log.Error().Err(err).Msg("Failed to reset DAILY_FULL status")
+		}
+	}
+
+	// Check DAILY_DELTA status
+	deltaStatus, err := s.leiService.GetProcessingStatus("DAILY_DELTA")
+	if err == nil && deltaStatus.Status == "RUNNING" {
+		log.Warn().
+			Str("job_type", "DAILY_DELTA").
+			Time("last_run", *deltaStatus.LastRunAt).
+			Msg("Resetting stuck RUNNING status to IDLE (process was interrupted)")
+		deltaStatus.Status = "IDLE"
+		deltaStatus.CurrentSourceFileID = nil
+		deltaStatus.ErrorMessage = "Previous run was interrupted"
+		if err := s.leiService.UpdateProcessingStatus(deltaStatus); err != nil {
+			log.Error().Err(err).Msg("Failed to reset DAILY_DELTA status")
+		}
+	}
+
+	log.Info().Msg("Stuck job status cleanup completed")
 }
 
 // dailyDeltaSyncLoop runs delta sync at configured interval

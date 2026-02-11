@@ -40,6 +40,7 @@ go.work
 # Logs
 *.log
 logs/
+/log/
 /backend/logs/
 
 # Database

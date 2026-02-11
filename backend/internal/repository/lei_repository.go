@@ -22,7 +22,7 @@ type LEIRepository interface {
 	FindAllLEI(limit, offset int) ([]*domain.LEIRecord, error)
 	CountLEIRecords() (int64, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
-	UpsertLEIRecord(record *domain.LEIRecord) (bool, error) // Returns true if updated, false if created
+	UpsertLEIRecord(record *domain.LEIRecord) (bool, error)              // Returns true if updated, false if created
 	BatchUpsertLEIRecords(records []*domain.LEIRecord) (int, int, error) // Returns (created, updated, error)
 	DeleteLEI(id string) error
 
@@ -175,8 +175,9 @@ func (r *leiRepository) UpsertLEIRecord(record *domain.LEIRecord) (bool, error) 
 	return true, nil
 }
 
-// BatchUpsertLEIRecords performs batch upsert of LEI records for high-performance bulk imports
+// BatchUpsertLEIRecords performs batch upsert of LEI records with full audit trail
 // Returns (created_count, updated_count, error)
+// CRITICAL: Every record operation is audited for data provenance compliance
 func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int, int, error) {
 	if len(records) == 0 {
 		return 0, 0, nil
@@ -201,138 +202,206 @@ func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int,
 		leiCodes[i] = record.LEI
 	}
 
-	// Count existing records before batch insert
-	var existingCount int64
+	// Identify existing records to determine creates vs updates
+	var existingLEIs []string
 	if err := r.db.Model(&domain.LEIRecord{}).
 		Where("lei IN ?", leiCodes).
-		Count(&existingCount).Error; err != nil {
-		return 0, 0, fmt.Errorf("failed to count existing records: %w", err)
+		Pluck("lei", &existingLEIs).Error; err != nil {
+		return 0, 0, fmt.Errorf("failed to query existing records: %w", err)
 	}
 
-	// Use GORM's CreateInBatches with ON CONFLICT for reliable upsert
-	// Note: GORM doesn't have built-in upsert, so we use raw SQL with ON CONFLICT
-	// Build VALUES clause for PostgreSQL INSERT ... ON CONFLICT
-	if len(records) > 0 {
-		// Use transaction for atomicity
-		tx := r.db.Begin()
-		if tx.Error != nil {
-			return 0, 0, tx.Error
+	// Build set of existing LEIs for fast lookup
+	existingSet := make(map[string]bool)
+	for _, lei := range existingLEIs {
+		existingSet[lei] = true
+	}
+
+	// Use transaction for atomicity: record + audit must succeed together
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return 0, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
 		}
-		defer func() {
-			if r := recover(); r != nil {
-				tx.Rollback()
-			}
-		}()
+	}()
 
-		// Insert in batches of 100 for optimal performance
-		batchSize := 100
-		for i := 0; i < len(records); i += batchSize {
-			end := i + batchSize
-			if end > len(records) {
-				end = len(records)
-			}
-			batch := records[i:end]
+	createdCount := 0
+	updatedCount := 0
 
-			// Build SQL with placeholders
-			valueStrings := make([]string, 0, len(batch))
-			valueArgs := make([]interface{}, 0, len(batch)*20) // Approx 20 fields per record
+	// Process in batches of 100 for optimal performance
+	batchSize := 100
+	for i := 0; i < len(records); i += batchSize {
+		end := i + batchSize
+		if end > len(records) {
+			end = len(records)
+		}
+		batch := records[i:end]
 
-			for _, record := range batch {
-				valueStrings = append(valueStrings, "(gen_random_uuid(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'system', 'system', '{}')")
-				valueArgs = append(valueArgs,
-					record.LEI,
-					record.LegalName,
-					record.EntityStatus,
-					record.LegalAddressLine1,
-					record.LegalAddressCity,
-					record.LegalAddressRegion,
-					record.LegalAddressCountry,
-					record.LegalAddressPostalCode,
-					record.HQAddressLine1,
-					record.HQAddressCity,
-					record.HQAddressRegion,
-					record.HQAddressCountry,
-					record.HQAddressPostalCode,
-					record.InitialRegistrationDate,
-					record.LastUpdateDate,
-					record.NextRenewalDate,
-					record.ManagingLOU,
-					record.ValidationSources,
-					record.EntityCategory,
-					record.EntitySubCategory,
-					record.SourceFileID,
-				)
-			}
+		// Build SQL with RETURNING to get affected record IDs
+		valueStrings := make([]string, 0, len(batch))
+		valueArgs := make([]interface{}, 0, len(batch)*20)
 
-			stmt := fmt.Sprintf(`
-				INSERT INTO lei_raw.lei_records (
-					id, lei, legal_name, entity_status,
-					legal_address_line_1, legal_address_city, legal_address_region,
-					legal_address_country, legal_address_postal_code,
-					hq_address_line_1, hq_address_city, hq_address_region,
-					hq_address_country, hq_address_postal_code,
-					initial_registration_date, last_update_date, next_renewal_date,
-					managing_lou, validation_sources, entity_category, entity_sub_category,
-					source_file_id,
-					created_at, updated_at, created_by, updated_by, changed_fields
-				) VALUES %s
-				ON CONFLICT (lei) DO UPDATE SET
-					legal_name = EXCLUDED.legal_name,
-					entity_status = EXCLUDED.entity_status,
-					legal_address_line_1 = EXCLUDED.legal_address_line_1,
-					legal_address_city = EXCLUDED.legal_address_city,
-					legal_address_region = EXCLUDED.legal_address_region,
-					legal_address_country = EXCLUDED.legal_address_country,
-					legal_address_postal_code = EXCLUDED.legal_address_postal_code,
-					hq_address_line_1 = EXCLUDED.hq_address_line_1,
-					hq_address_city = EXCLUDED.hq_address_city,
-					hq_address_region = EXCLUDED.hq_address_region,
-					hq_address_country = EXCLUDED.hq_address_country,
-					hq_address_postal_code = EXCLUDED.hq_address_postal_code,
-					initial_registration_date = EXCLUDED.initial_registration_date,
-					last_update_date = EXCLUDED.last_update_date,
-					next_renewal_date = EXCLUDED.next_renewal_date,
-					managing_lou = EXCLUDED.managing_lou,
-					validation_sources = EXCLUDED.validation_sources,
-					entity_category = EXCLUDED.entity_category,
-					entity_sub_category = EXCLUDED.entity_sub_category,
-					source_file_id = EXCLUDED.source_file_id,
-					updated_at = NOW(),
-					updated_by = 'system'
-			`, strings.Join(valueStrings, ","))
+		for _, record := range batch {
+			valueStrings = append(valueStrings, "(gen_random_uuid(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'system', 'system', '{}')")
+			valueArgs = append(valueArgs,
+				record.LEI,
+				record.LegalName,
+				record.EntityStatus,
+				record.LegalAddressLine1,
+				record.LegalAddressCity,
+				record.LegalAddressRegion,
+				record.LegalAddressCountry,
+				record.LegalAddressPostalCode,
+				record.HQAddressLine1,
+				record.HQAddressCity,
+				record.HQAddressRegion,
+				record.HQAddressCountry,
+				record.HQAddressPostalCode,
+				record.InitialRegistrationDate,
+				record.LastUpdateDate,
+				record.NextRenewalDate,
+				record.ManagingLOU,
+				record.ValidationSources,
+				record.EntityCategory,
+				record.EntitySubCategory,
+				record.SourceFileID,
+			)
+		}
 
-			if err := tx.Exec(stmt, valueArgs...).Error; err != nil {
-				tx.Rollback()
-				// Log detailed error information
-				log.Error().
-					Err(err).
-					Int("batch_start", i).
-					Int("batch_end", end).
-					Int("batch_size", len(batch)).
-					Str("first_lei", batch[0].LEI).
-					Str("last_lei", batch[len(batch)-1].LEI).
-					Int("value_args_count", len(valueArgs)).
-					Msg("CRITICAL: Batch upsert SQL execution failed")
-				return 0, 0, fmt.Errorf("failed to batch upsert records %d-%d: %w", i, end, err)
-			}
+		// Execute upsert with RETURNING to get IDs
+		stmt := fmt.Sprintf(`
+			INSERT INTO lei_raw.lei_records (
+				id, lei, legal_name, entity_status,
+				legal_address_line_1, legal_address_city, legal_address_region,
+				legal_address_country, legal_address_postal_code,
+				hq_address_line_1, hq_address_city, hq_address_region,
+				hq_address_country, hq_address_postal_code,
+				initial_registration_date, last_update_date, next_renewal_date,
+				managing_lou, validation_sources, entity_category, entity_sub_category,
+				source_file_id,
+				created_at, updated_at, created_by, updated_by, changed_fields
+			) VALUES %s
+			ON CONFLICT (lei) DO UPDATE SET
+				legal_name = EXCLUDED.legal_name,
+				entity_status = EXCLUDED.entity_status,
+				legal_address_line_1 = EXCLUDED.legal_address_line_1,
+				legal_address_city = EXCLUDED.legal_address_city,
+				legal_address_region = EXCLUDED.legal_address_region,
+				legal_address_country = EXCLUDED.legal_address_country,
+				legal_address_postal_code = EXCLUDED.legal_address_postal_code,
+				hq_address_line_1 = EXCLUDED.hq_address_line_1,
+				hq_address_city = EXCLUDED.hq_address_city,
+				hq_address_region = EXCLUDED.hq_address_region,
+				hq_address_country = EXCLUDED.hq_address_country,
+				hq_address_postal_code = EXCLUDED.hq_address_postal_code,
+				initial_registration_date = EXCLUDED.initial_registration_date,
+				last_update_date = EXCLUDED.last_update_date,
+				next_renewal_date = EXCLUDED.next_renewal_date,
+				managing_lou = EXCLUDED.managing_lou,
+				validation_sources = EXCLUDED.validation_sources,
+				entity_category = EXCLUDED.entity_category,
+				entity_sub_category = EXCLUDED.entity_sub_category,
+				source_file_id = EXCLUDED.source_file_id,
+				updated_at = NOW(),
+				updated_by = 'system'
+			RETURNING id, lei
+		`, strings.Join(valueStrings, ","))
 
-			log.Debug().
+		// Execute and collect returned IDs
+		type returnedRow struct {
+			ID  uuid.UUID
+			LEI string
+		}
+		var returned []returnedRow
+		if err := tx.Raw(stmt, valueArgs...).Scan(&returned).Error; err != nil {
+			tx.Rollback()
+			log.Error().
+				Err(err).
 				Int("batch_start", i).
 				Int("batch_end", end).
-				Int("batch_size", len(batch)).
-				Msg("Batch SQL executed successfully")
+				Msg("CRITICAL: Batch upsert failed")
+			return 0, 0, fmt.Errorf("failed to batch upsert records %d-%d: %w", i, end, err)
 		}
 
-		if err := tx.Commit().Error; err != nil {
-			return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
+		// Create map of LEI -> ID from returned rows
+		leiToID := make(map[string]uuid.UUID)
+		for _, row := range returned {
+			leiToID[row.LEI] = row.ID
 		}
+
+		// Build audit records for this batch
+		auditRecords := make([]domain.LEIRecordAudit, 0, len(batch))
+		for _, record := range batch {
+			recordID, exists := leiToID[record.LEI]
+			if !exists {
+				tx.Rollback()
+				return 0, 0, fmt.Errorf("failed to get ID for LEI %s after upsert", record.LEI)
+			}
+
+			// Determine if this was a create or update
+			action := "CREATE"
+			wasExisting := existingSet[record.LEI]
+			if wasExisting {
+				action = "UPDATE"
+				updatedCount++
+			} else {
+				createdCount++
+			}
+
+			// Create audit record with full snapshot
+			auditRecords = append(auditRecords, domain.LEIRecordAudit{
+				LEIRecordID:    recordID,
+				LEI:            record.LEI,
+				Action:         action,
+				RecordSnapshot: r.recordToJSON(record),
+				ChangedFields:  "{}",
+				SourceFileID:   record.SourceFileID,
+				ChangedBy:      "system",
+			})
+		}
+
+		// Batch insert audit records (100 at a time)
+		auditBatchSize := 100
+		for j := 0; j < len(auditRecords); j += auditBatchSize {
+			auditEnd := j + auditBatchSize
+			if auditEnd > len(auditRecords) {
+				auditEnd = len(auditRecords)
+			}
+			auditBatch := auditRecords[j:auditEnd]
+
+			if err := tx.Create(&auditBatch).Error; err != nil {
+				tx.Rollback()
+				log.Error().
+					Err(err).
+					Int("audit_batch_start", j).
+					Int("audit_batch_end", auditEnd).
+					Msg("CRITICAL: Audit record creation failed")
+				return 0, 0, fmt.Errorf("failed to create audit records: %w", err)
+			}
+		}
+
+		log.Debug().
+			Int("batch_start", i).
+			Int("batch_end", end).
+			Int("records", len(batch)).
+			Int("audits", len(auditRecords)).
+			Msg("Batch upsert with audit trail completed")
 	}
 
-	totalCount := int64(len(records))
-	createdCount := totalCount - existingCount
-	updatedCount := existingCount
+	// Commit transaction: all records + audits persisted together
+	if err := tx.Commit().Error; err != nil {
+		return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
-	return int(createdCount), int(updatedCount), nil
+	log.Info().
+		Int("created", createdCount).
+		Int("updated", updatedCount).
+		Int("total", len(records)).
+		Msg("Batch upsert with full audit trail completed successfully")
+
+	return createdCount, updatedCount, nil
 }
 
 // DeleteLEI soft deletes an LEI record
@@ -417,8 +486,8 @@ func (r *leiRepository) ResetFailedFileForRetry(fileID uuid.UUID) error {
 		Where("id = ?", fileID).
 		Updates(map[string]interface{}{
 			"processing_status": "PENDING",
-			"retry_count":        gorm.Expr("retry_count + 1"),
-			"processing_error":   "",
+			"retry_count":       gorm.Expr("retry_count + 1"),
+			"processing_error":  "",
 		}).Error
 }
 

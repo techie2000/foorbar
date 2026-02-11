@@ -55,6 +55,7 @@ services:
       - "${BACKEND_PORT}:8080"
     volumes:
       - lei_data_prod:/root/data/lei
+      - log_data_prod:/root/log
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,6 +83,7 @@ services:
 volumes:
   postgres_data_prod:
   lei_data_prod:
+  log_data_prod:
 
 networks:
   axiom-prod:

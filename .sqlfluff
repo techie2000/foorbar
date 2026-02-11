@@ -31,6 +31,22 @@ indented_joins = False
 indented_using_on = True
 template_blocks_indent = True
 
+[sqlfluff:layout:type:comma]
+# Comma placement (trailing = commas at end of line)
+line_position = trailing
+spacing_before = touch
+spacing_after = single
+
+[sqlfluff:layout:type:binary_operator]
+# Binary operators (=, !=, <, >, etc.)
+line_position = leading
+spacing_within = single
+
+[sqlfluff:layout:type:statement_terminator]
+# Semicolon placement
+spacing_before = touch
+spacing_after = touch
+
 [sqlfluff:rules]
 # General rules configuration
 # See: https://docs.sqlfluff.com/en/stable/rules.html
@@ -38,8 +54,9 @@ template_blocks_indent = True
 # Capitalisation policy for keywords (consistent: use same case, upper: uppercase, lower: lowercase)
 capitalisation_policy = upper
 
-# Comma placement (leading or trailing)
-comma_style = trailing
+# Enforce no trailing whitespace (LT12)
+# Enforce proper indentation (LT02)
+# No unnecessary blank lines (LT11)
 
 [sqlfluff:rules:capitalisation.keywords]
 # Keywords should be uppercase
