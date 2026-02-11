@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 	"github.com/techie2000/axiom/internal/domain"
 	"gorm.io/gorm"
 )
@@ -20,6 +23,7 @@ type LEIRepository interface {
 	CountLEIRecords() (int64, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
 	UpsertLEIRecord(record *domain.LEIRecord) (bool, error) // Returns true if updated, false if created
+	BatchUpsertLEIRecords(records []*domain.LEIRecord) (int, int, error) // Returns (created, updated, error)
 	DeleteLEI(id string) error
 
 	// Source File operations
@@ -28,6 +32,8 @@ type LEIRepository interface {
 	FindLatestSourceFile(fileType string) (*domain.SourceFile, error)
 	UpdateSourceFile(file *domain.SourceFile) error
 	FindPendingSourceFiles() ([]*domain.SourceFile, error)
+	FindRetryableFailedFiles() ([]*domain.SourceFile, error)
+	ResetFailedFileForRetry(fileID uuid.UUID) error
 
 	// File Processing Status operations
 	FindProcessingStatus(jobType string) (*domain.FileProcessingStatus, error)
@@ -169,6 +175,166 @@ func (r *leiRepository) UpsertLEIRecord(record *domain.LEIRecord) (bool, error) 
 	return true, nil
 }
 
+// BatchUpsertLEIRecords performs batch upsert of LEI records for high-performance bulk imports
+// Returns (created_count, updated_count, error)
+func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int, int, error) {
+	if len(records) == 0 {
+		return 0, 0, nil
+	}
+
+	// Set created_by and updated_by for all records
+	now := time.Now()
+	leiCodes := make([]string, len(records))
+	for i, record := range records {
+		if record.CreatedAt.IsZero() {
+			record.CreatedAt = now
+		}
+		if record.UpdatedAt.IsZero() {
+			record.UpdatedAt = now
+		}
+		if record.CreatedBy == "" {
+			record.CreatedBy = "system"
+		}
+		if record.UpdatedBy == "" {
+			record.UpdatedBy = "system"
+		}
+		leiCodes[i] = record.LEI
+	}
+
+	// Count existing records before batch insert
+	var existingCount int64
+	if err := r.db.Model(&domain.LEIRecord{}).
+		Where("lei IN ?", leiCodes).
+		Count(&existingCount).Error; err != nil {
+		return 0, 0, fmt.Errorf("failed to count existing records: %w", err)
+	}
+
+	// Use GORM's CreateInBatches with ON CONFLICT for reliable upsert
+	// Note: GORM doesn't have built-in upsert, so we use raw SQL with ON CONFLICT
+	// Build VALUES clause for PostgreSQL INSERT ... ON CONFLICT
+	if len(records) > 0 {
+		// Use transaction for atomicity
+		tx := r.db.Begin()
+		if tx.Error != nil {
+			return 0, 0, tx.Error
+		}
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
+		// Insert in batches of 100 for optimal performance
+		batchSize := 100
+		for i := 0; i < len(records); i += batchSize {
+			end := i + batchSize
+			if end > len(records) {
+				end = len(records)
+			}
+			batch := records[i:end]
+
+			// Build SQL with placeholders
+			valueStrings := make([]string, 0, len(batch))
+			valueArgs := make([]interface{}, 0, len(batch)*20) // Approx 20 fields per record
+
+			for _, record := range batch {
+				valueStrings = append(valueStrings, "(gen_random_uuid(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'system', 'system', '{}')")
+				valueArgs = append(valueArgs,
+					record.LEI,
+					record.LegalName,
+					record.EntityStatus,
+					record.LegalAddressLine1,
+					record.LegalAddressCity,
+					record.LegalAddressRegion,
+					record.LegalAddressCountry,
+					record.LegalAddressPostalCode,
+					record.HQAddressLine1,
+					record.HQAddressCity,
+					record.HQAddressRegion,
+					record.HQAddressCountry,
+					record.HQAddressPostalCode,
+					record.InitialRegistrationDate,
+					record.LastUpdateDate,
+					record.NextRenewalDate,
+					record.ManagingLOU,
+					record.ValidationSources,
+					record.EntityCategory,
+					record.EntitySubCategory,
+					record.SourceFileID,
+				)
+			}
+
+			stmt := fmt.Sprintf(`
+				INSERT INTO lei_raw.lei_records (
+					id, lei, legal_name, entity_status,
+					legal_address_line_1, legal_address_city, legal_address_region,
+					legal_address_country, legal_address_postal_code,
+					hq_address_line_1, hq_address_city, hq_address_region,
+					hq_address_country, hq_address_postal_code,
+					initial_registration_date, last_update_date, next_renewal_date,
+					managing_lou, validation_sources, entity_category, entity_sub_category,
+					source_file_id,
+					created_at, updated_at, created_by, updated_by, changed_fields
+				) VALUES %s
+				ON CONFLICT (lei) DO UPDATE SET
+					legal_name = EXCLUDED.legal_name,
+					entity_status = EXCLUDED.entity_status,
+					legal_address_line_1 = EXCLUDED.legal_address_line_1,
+					legal_address_city = EXCLUDED.legal_address_city,
+					legal_address_region = EXCLUDED.legal_address_region,
+					legal_address_country = EXCLUDED.legal_address_country,
+					legal_address_postal_code = EXCLUDED.legal_address_postal_code,
+					hq_address_line_1 = EXCLUDED.hq_address_line_1,
+					hq_address_city = EXCLUDED.hq_address_city,
+					hq_address_region = EXCLUDED.hq_address_region,
+					hq_address_country = EXCLUDED.hq_address_country,
+					hq_address_postal_code = EXCLUDED.hq_address_postal_code,
+					initial_registration_date = EXCLUDED.initial_registration_date,
+					last_update_date = EXCLUDED.last_update_date,
+					next_renewal_date = EXCLUDED.next_renewal_date,
+					managing_lou = EXCLUDED.managing_lou,
+					validation_sources = EXCLUDED.validation_sources,
+					entity_category = EXCLUDED.entity_category,
+					entity_sub_category = EXCLUDED.entity_sub_category,
+					source_file_id = EXCLUDED.source_file_id,
+					updated_at = NOW(),
+					updated_by = 'system'
+			`, strings.Join(valueStrings, ","))
+
+			if err := tx.Exec(stmt, valueArgs...).Error; err != nil {
+				tx.Rollback()
+				// Log detailed error information
+				log.Error().
+					Err(err).
+					Int("batch_start", i).
+					Int("batch_end", end).
+					Int("batch_size", len(batch)).
+					Str("first_lei", batch[0].LEI).
+					Str("last_lei", batch[len(batch)-1].LEI).
+					Int("value_args_count", len(valueArgs)).
+					Msg("CRITICAL: Batch upsert SQL execution failed")
+				return 0, 0, fmt.Errorf("failed to batch upsert records %d-%d: %w", i, end, err)
+			}
+
+			log.Debug().
+				Int("batch_start", i).
+				Int("batch_end", end).
+				Int("batch_size", len(batch)).
+				Msg("Batch SQL executed successfully")
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			return 0, 0, fmt.Errorf("failed to commit transaction: %w", err)
+		}
+	}
+
+	totalCount := int64(len(records))
+	createdCount := totalCount - existingCount
+	updatedCount := existingCount
+
+	return int(createdCount), int(updatedCount), nil
+}
+
 // DeleteLEI soft deletes an LEI record
 func (r *leiRepository) DeleteLEI(id string) error {
 	// Get the record before deleting for audit
@@ -231,6 +397,29 @@ func (r *leiRepository) FindPendingSourceFiles() ([]*domain.SourceFile, error) {
 		return nil, err
 	}
 	return files, nil
+}
+
+// FindRetryableFailedFiles finds FAILED files that are eligible for retry
+func (r *leiRepository) FindRetryableFailedFiles() ([]*domain.SourceFile, error) {
+	var files []*domain.SourceFile
+	if err := r.db.Where("processing_status = ? AND retry_count < max_retries", "FAILED").
+		Where("failure_category IN ? OR failure_category IS NULL", []string{"SCHEMA_ERROR", "NETWORK_ERROR", "UNKNOWN"}).
+		Order("publication_date ASC").
+		Find(&files).Error; err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+// ResetFailedFileForRetry resets a failed file to PENDING for retry
+func (r *leiRepository) ResetFailedFileForRetry(fileID uuid.UUID) error {
+	return r.db.Model(&domain.SourceFile{}).
+		Where("id = ?", fileID).
+		Updates(map[string]interface{}{
+			"processing_status": "PENDING",
+			"retry_count":        gorm.Expr("retry_count + 1"),
+			"processing_error":   "",
+		}).Error
 }
 
 // FindProcessingStatus finds the processing status for a job type

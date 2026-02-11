@@ -77,6 +77,9 @@ type LEIService interface {
 	// File processing
 	ProcessSourceFile(sourceFileID uuid.UUID) error
 	ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeFromLEI string) error
+	FindPendingSourceFiles() ([]*domain.SourceFile, error)
+	FindRetryableFailedFiles() ([]*domain.SourceFile, error)
+	ResetFailedFileForRetry(fileID uuid.UUID) error
 
 	// Record management
 	CreateLEIRecord(record *domain.LEIRecord) error
@@ -288,6 +291,7 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	if err != nil {
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
+		sourceFile.FailureCategory = "FILE_CORRUPTION" // Zip extraction failure
 		s.repo.UpdateSourceFile(sourceFile)
 		return fmt.Errorf("failed to extract file: %w", err)
 	}
@@ -297,6 +301,28 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	if err := s.processJSONFile(jsonPath, sourceFile, resumeFromLEI); err != nil {
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
+		
+		// Categorize the failure for retry logic
+		errorMsg := err.Error()
+		if strings.Contains(errorMsg, "column") && strings.Contains(errorMsg, "does not exist") {
+			sourceFile.FailureCategory = "SCHEMA_ERROR"
+		} else if strings.Contains(errorMsg, "value too long") {
+			sourceFile.FailureCategory = "SCHEMA_ERROR"
+		} else if strings.Contains(errorMsg, "connection") || strings.Contains(errorMsg, "timeout") {
+			sourceFile.FailureCategory = "NETWORK_ERROR"
+		} else if strings.Contains(errorMsg, "invalid JSON") || strings.Contains(errorMsg, "unexpected EOF") {
+			sourceFile.FailureCategory = "FILE_CORRUPTION"
+		} else {
+			sourceFile.FailureCategory = "UNKNOWN"
+		}
+		
+		log.Warn().
+			Str("failure_category", sourceFile.FailureCategory).
+			Int("retry_count", sourceFile.RetryCount).
+			Int("max_retries", sourceFile.MaxRetries).
+			Bool("can_retry", sourceFile.RetryCount < sourceFile.MaxRetries).
+			Msg("File processing failed with categorized error")
+		
 		s.repo.UpdateSourceFile(sourceFile)
 		return fmt.Errorf("failed to process JSON file: %w", err)
 	}
@@ -357,6 +383,21 @@ func (s *leiService) extractZipFile(zipPath string) (string, error) {
 	return "", fmt.Errorf("no JSON file found in ZIP archive")
 }
 
+// FindPendingSourceFiles finds all source files that are pending or in-progress
+func (s *leiService) FindPendingSourceFiles() ([]*domain.SourceFile, error) {
+	return s.repo.FindPendingSourceFiles()
+}
+
+// FindRetryableFailedFiles finds failed files that can be retried
+func (s *leiService) FindRetryableFailedFiles() ([]*domain.SourceFile, error) {
+	return s.repo.FindRetryableFailedFiles()
+}
+
+// ResetFailedFileForRetry resets a failed file to PENDING for retry
+func (s *leiService) ResetFailedFileForRetry(fileID uuid.UUID) error {
+	return s.repo.ResetFailedFileForRetry(fileID)
+}
+
 // processJSONFile parses and processes the LEI JSON file
 // GLEIF JSON format: {"records": [ {...}, {...}, ... ]}
 func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceFile, resumeFromLEI string) error {
@@ -400,8 +441,16 @@ func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceF
 	return fmt.Errorf("records array not found in JSON file")
 }
 
-// processRecordsArray processes the records array from the JSON decoder
-func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *domain.SourceFile, resumeFromLEI string) error {
+// processRecordsArray processes the records array from the JSON decoder using batch processing
+func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *domain.SourceFile, resumeFromLEI string) (retErr error) {
+	// Panic recovery to catch any unhandled errors
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Interface("panic", r).Str("source_file_id", sourceFile.ID.String()).Msg("PANIC in processRecordsArray")
+			retErr = fmt.Errorf("panic during processing: %v", r)
+		}
+	}()
+
 	// Read the opening bracket of the records array
 	token, err := decoder.Token()
 	if err != nil {
@@ -411,16 +460,122 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 		return fmt.Errorf("expected '[', got %v", token)
 	}
 
-	var totalRecords int
-	var processedRecords int
-	var failedRecords int
+	// Start counters from current state (important for resume!)
+	var totalRecords int = sourceFile.TotalRecords
+	var processedRecords int = sourceFile.ProcessedRecords
+	var failedRecords int = sourceFile.FailedRecords
 	var shouldProcess bool = (resumeFromLEI == "")
+	var lastProcessedLEI string
+
+	log.Info().
+		Int("starting_total", totalRecords).
+		Int("starting_processed", processedRecords).
+		Int("starting_failed", failedRecords).
+		Str("resume_from", resumeFromLEI).
+		Msg("Starting array processing with counters")
+	
+	// Start heartbeat ticker for progress monitoring (every 15 seconds)
+	heartbeatTicker := time.NewTicker(15 * time.Second)
+	defer heartbeatTicker.Stop()
+	lastHeartbeatTime := time.Now()
+	lastHeartbeatProcessed := processedRecords
+
+	// Goroutine for periodic heartbeat logging
+	go func() {
+		for range heartbeatTicker.C {
+			elapsed := time.Since(lastHeartbeatTime).Seconds()
+			recordsSinceLastHeartbeat := processedRecords - lastHeartbeatProcessed
+			rate := float64(recordsSinceLastHeartbeat) / elapsed
+			
+			remainingRecords := totalRecords - processedRecords
+			etaSeconds := 0.0
+			if rate > 0 {
+				etaSeconds = float64(remainingRecords) / rate
+			}
+			
+			percentComplete := 0.0
+			if totalRecords > 0 {
+				percentComplete = (float64(processedRecords) / float64(totalRecords)) * 100
+			}
+			
+			log.Info().
+				Int("total_records", totalRecords).
+				Int("processed_records", processedRecords).
+				Int("failed_records", failedRecords).
+				Float64("percent_complete", percentComplete).
+				Float64("records_per_sec", rate).
+				Float64("eta_seconds", etaSeconds).
+				Str("last_lei", lastProcessedLEI).
+				Msg("HEARTBEAT: LEI import in progress")
+			
+			lastHeartbeatTime = time.Now()
+			lastHeartbeatProcessed = processedRecords
+		}
+	}()
+	
+	const batchSize = 1000
+	batch := make([]*domain.LEIRecord, 0, batchSize)
+
+	// flushBatch processes accumulated records using batch upsert
+	flushBatch := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+
+		log.Info().
+			Int("batch_size", len(batch)).
+			Int("current_processed", processedRecords).
+			Str("last_lei", lastProcessedLEI).
+			Msg("Flushing batch to database")
+
+		created, updated, err := s.repo.BatchUpsertLEIRecords(batch)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("batch_size", len(batch)).
+				Str("first_lei", batch[0].LEI).
+				Str("last_lei", batch[len(batch)-1].LEI).
+				Msg("CRITICAL: Failed to batch upsert LEI records")
+			failedRecords += len(batch)
+			// Return error to stop processing
+			return fmt.Errorf("batch upsert failed: %w", err)
+		} else {
+			processedRecords += created + updated
+			
+			// Update progress after each batch
+			sourceFile.TotalRecords = totalRecords
+			sourceFile.ProcessedRecords = processedRecords
+			sourceFile.FailedRecords = failedRecords
+			sourceFile.LastProcessedLEI = lastProcessedLEI
+			if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
+				log.Error().Err(err).Msg("Failed to update source file progress")
+			}
+
+			log.Info().
+				Int("total_scanned", totalRecords).
+				Int("processed", processedRecords).
+				Int("created", created).
+				Int("updated", updated).
+				Int("failed", failedRecords).
+				Str("last_lei", lastProcessedLEI).
+				Msg("Batch processing progress")
+		}
+
+		// Clear batch for next iteration
+		batch = make([]*domain.LEIRecord, 0, batchSize)
+		return nil
+	}
 
 	// Process each record in the array
+	recordCount := 0
 	for decoder.More() {
+		recordCount++
 		var jsonRecord LEIJSONRecord
 		if err := decoder.Decode(&jsonRecord); err != nil {
-			log.Error().Err(err).Msg("Failed to decode LEI JSON record")
+			log.Error().
+				Err(err).
+				Int("record_number", recordCount).
+				Msg("Failed to decode LEI JSON record")
 			failedRecords++
 			continue
 		}
@@ -432,43 +587,47 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			lei := s.extractLEI(&jsonRecord)
 			if lei == resumeFromLEI {
 				shouldProcess = true
+				// Skip the checkpoint record itself (already processed)
+				continue
 			} else {
+				// Still counting total records even when skipping
 				continue
 			}
 		}
 
 		// Convert JSON record to domain model
 		record := s.jsonToDomainRecord(&jsonRecord, sourceFile.ID)
+		lastProcessedLEI = record.LEI
 
-		// Upsert record (handles change detection)
-		if _, err := s.repo.UpsertLEIRecord(record); err != nil {
-			log.Error().Err(err).Str("lei", record.LEI).Msg("Failed to upsert LEI record")
-			failedRecords++
-		} else {
-			processedRecords++
+		// Add to batch
+		batch = append(batch, record)
+
+		// Flush batch when it reaches batch size
+		if len(batch) >= batchSize {
+			if err := flushBatch(); err != nil {
+				return err
+			}
 		}
+	}
 
-		// Update progress every 1000 records
-		if processedRecords%1000 == 0 {
-			sourceFile.TotalRecords = totalRecords
-			sourceFile.ProcessedRecords = processedRecords
-			sourceFile.FailedRecords = failedRecords
-			sourceFile.LastProcessedLEI = record.LEI
-			s.repo.UpdateSourceFile(sourceFile)
-
-			log.Info().
-				Int("total", totalRecords).
-				Int("processed", processedRecords).
-				Int("failed", failedRecords).
-				Str("last_lei", record.LEI).
-				Msg("Processing progress")
-		}
+	// Flush any remaining records in the batch
+	if err := flushBatch(); err != nil {
+		return err
 	}
 
 	// Final update
 	sourceFile.TotalRecords = totalRecords
 	sourceFile.ProcessedRecords = processedRecords
 	sourceFile.FailedRecords = failedRecords
+	if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
+		log.Error().Err(err).Msg("Failed to update final source file status")
+	}
+
+	log.Info().
+		Int("total_scanned", totalRecords).
+		Int("total_processed", processedRecords).
+		Int("total_failed", failedRecords).
+		Msg("File processing completed")
 
 	return nil
 }

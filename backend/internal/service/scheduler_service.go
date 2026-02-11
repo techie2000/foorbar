@@ -225,19 +225,70 @@ func (s *schedulerService) dailyDeltaSyncLoop() {
 	ticker := time.NewTicker(s.deltaSyncInterval)
 	defer ticker.Stop()
 
-	// Check if database is empty on first run
-	count, err := s.leiService.CountLEIRecords()
+	// First, check for FAILED files that should be retried
+	failedFiles, err := s.leiService.FindRetryableFailedFiles()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to count LEI records")
-	} else if count == 0 {
-		log.Info().Msg("Database is empty, running initial full sync instead of delta")
-		if err := s.RunDailyFullSync(); err != nil {
-			log.Error().Err(err).Msg("Failed to run initial full sync")
+		log.Error().Err(err).Msg("Failed to check for retryable failed files")
+	} else if len(failedFiles) > 0 {
+		log.Info().
+			Int("failed_files", len(failedFiles)).
+			Msg("Found retryable failed files, resetting to PENDING for retry")
+		for _, file := range failedFiles {
+			log.Info().
+				Str("file_id", file.ID.String()).
+				Str("file_name", file.FileName).
+				Str("failure_category", file.FailureCategory).
+				Int("retry_count", file.RetryCount).
+				Int("max_retries", file.MaxRetries).
+				Msg("Resetting failed file for retry")
+			if err := s.leiService.ResetFailedFileForRetry(file.ID); err != nil {
+				log.Error().Err(err).Str("file_id", file.ID.String()).Msg("Failed to reset file for retry")
+			}
+		}
+	}
+
+	// Check for incomplete files (PENDING or IN_PROGRESS)
+	pendingFiles, err := s.leiService.FindPendingSourceFiles()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to check for pending source files")
+	} else if len(pendingFiles) > 0 {
+		log.Info().Int("pending_files", len(pendingFiles)).Msg("Found incomplete source files, resuming processing")
+		for _, file := range pendingFiles {
+			resumeLEI := ""
+			if file.ProcessingStatus == "IN_PROGRESS" && file.LastProcessedLEI != "" {
+				resumeLEI = file.LastProcessedLEI
+				log.Info().
+					Str("file_id", file.ID.String()).
+					Str("file_name", file.FileName).
+					Str("resume_from", resumeLEI).
+					Int("processed", file.ProcessedRecords).
+					Int("total", file.TotalRecords).
+					Msg("Resuming incomplete file processing")
+			} else {
+				log.Info().
+					Str("file_id", file.ID.String()).
+					Str("file_name", file.FileName).
+					Msg("Processing pending file")
+			}
+			if err := s.leiService.ProcessSourceFileWithResume(file.ID, resumeLEI); err != nil {
+				log.Error().Err(err).Str("file_id", file.ID.String()).Msg("Failed to process pending file")
+			}
 		}
 	} else {
-		log.Info().Int64("existing_records", count).Msg("Database has existing records, running delta sync")
-		if err := s.RunDailyDeltaSync(); err != nil {
-			log.Error().Err(err).Msg("Failed to run initial delta sync")
+		// No incomplete files, check if database is empty for initial run decision
+		count, err := s.leiService.CountLEIRecords()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to count LEI records")
+		} else if count == 0 {
+			log.Info().Msg("Database is empty, running initial full sync instead of delta")
+			if err := s.RunDailyFullSync(); err != nil {
+				log.Error().Err(err).Msg("Failed to run initial full sync")
+			}
+		} else {
+			log.Info().Int64("existing_records", count).Msg("Database has existing records, running delta sync")
+			if err := s.RunDailyDeltaSync(); err != nil {
+				log.Error().Err(err).Msg("Failed to run initial delta sync")
+			}
 		}
 	}
 

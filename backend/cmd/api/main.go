@@ -137,8 +137,9 @@ func connectDatabase(cfg *config.Config) (*gorm.DB, error) {
 
 	// Configure GORM logger based on DATABASE_LOGLEVEL
 	logLevel := parseGORMLogLevel(cfg.Database.LogLevel)
+	customLogger := newCustomGORMLogger(logLevel)
 	gormConfig := &gorm.Config{
-		Logger: gormLogger.Default.LogMode(logLevel),
+		Logger: customLogger,
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
@@ -173,6 +174,38 @@ func parseGORMLogLevel(level string) gormLogger.LogLevel {
 	default:
 		return gormLogger.Warn // Default to warn for production
 	}
+}
+
+// customGORMLogger wraps the default GORM logger to suppress "record not found" errors
+type customGORMLogger struct {
+	gormLogger.Interface
+	logLevel gormLogger.LogLevel
+}
+
+func newCustomGORMLogger(level gormLogger.LogLevel) *customGORMLogger {
+	return &customGORMLogger{
+		Interface: gormLogger.Default.LogMode(level),
+		logLevel:  level,
+	}
+}
+
+// Error overrides the Error method to suppress "record not found" logs
+func (l *customGORMLogger) Error(ctx context.Context, msg string, data ...interface{}) {
+	// Suppress "record not found" errors as they're expected during upsert operations
+	if l.logLevel >= gormLogger.Error {
+		if !strings.Contains(msg, "record not found") {
+			l.Interface.Error(ctx, msg, data...)
+		}
+	}
+}
+
+// Trace overrides the Trace method to suppress "record not found" query logs
+func (l *customGORMLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
+	// Suppress trace logs for "record not found" errors
+	if err != nil && err.Error() == "record not found" {
+		return
+	}
+	l.Interface.Trace(ctx, begin, fc, err)
 }
 
 func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {

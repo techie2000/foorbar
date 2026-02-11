@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS lei_raw.lei_records (
     legal_address_city VARCHAR(100),
     legal_address_region VARCHAR(100),
     legal_address_country VARCHAR(2),  -- ISO 3166-1 alpha-2
-    legal_address_postal_code VARCHAR(20),
+    legal_address_postal_code VARCHAR(50),  -- Increased from 20 to accommodate longer postal codes
     
     -- Headquarters address
     hq_address_line_1 VARCHAR(500),
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS lei_raw.lei_records (
     hq_address_city VARCHAR(100),
     hq_address_region VARCHAR(100),
     hq_address_country VARCHAR(2),  -- ISO 3166-1 alpha-2
-    hq_address_postal_code VARCHAR(20),
+    hq_address_postal_code VARCHAR(50),  -- Increased from 20 to accommodate longer postal codes
     
     -- Registration
     registration_authority VARCHAR(100),

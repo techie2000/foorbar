@@ -26,7 +26,7 @@ type LEIRecord struct {
 	LegalAddressCity       string `gorm:"size:100" json:"legal_address_city"`
 	LegalAddressRegion     string `gorm:"size:100" json:"legal_address_region"`
 	LegalAddressCountry    string `gorm:"size:2" json:"legal_address_country"` // ISO 3166-1 alpha-2
-	LegalAddressPostalCode string `gorm:"size:20" json:"legal_address_postal_code"`
+	LegalAddressPostalCode string `gorm:"size:255" json:"legal_address_postal_code"`
 
 	// Headquarters address
 	HQAddressLine1      string `gorm:"column:hq_address_line_1;size:500" json:"hq_address_line_1"`
@@ -36,16 +36,16 @@ type LEIRecord struct {
 	HQAddressCity       string `gorm:"size:100" json:"hq_address_city"`
 	HQAddressRegion     string `gorm:"size:100" json:"hq_address_region"`
 	HQAddressCountry    string `gorm:"size:2" json:"hq_address_country"` // ISO 3166-1 alpha-2
-	HQAddressPostalCode string `gorm:"size:20" json:"hq_address_postal_code"`
+	HQAddressPostalCode string `gorm:"size:255" json:"hq_address_postal_code"`
 
 	// Registration
 	RegistrationAuthority   string `gorm:"size:100" json:"registration_authority"`
 	RegistrationAuthorityID string `gorm:"size:100" json:"registration_authority_id"`
 	RegistrationNumber      string `gorm:"size:100" json:"registration_number"`
-	EntityCategory          string `gorm:"size:50" json:"entity_category"`
-	EntitySubCategory       string `gorm:"size:50" json:"entity_sub_category"`
+	EntityCategory          string `gorm:"size:255" json:"entity_category"`
+	EntitySubCategory       string `gorm:"size:255" json:"entity_sub_category"`
 	EntityLegalForm         string `gorm:"size:100" json:"entity_legal_form"`
-	EntityStatus            string `gorm:"size:50" json:"entity_status"`
+	EntityStatus            string `gorm:"size:255" json:"entity_status"`
 
 	// Associated entities
 	ManagingLOU  string `gorm:"size:100" json:"managing_lou"` // Local Operating Unit
@@ -124,6 +124,11 @@ type SourceFile struct {
 	ProcessingStartedAt   *time.Time `json:"processing_started_at"`
 	ProcessingCompletedAt *time.Time `json:"processing_completed_at"`
 	ProcessingError       string     `gorm:"type:text" json:"processing_error"`
+
+	// Retry tracking
+	RetryCount      int    `gorm:"default:0;not null" json:"retry_count"`
+	MaxRetries      int    `gorm:"default:3;not null" json:"max_retries"`
+	FailureCategory string `gorm:"size:50" json:"failure_category"` // SCHEMA_ERROR, NETWORK_ERROR, FILE_CORRUPTION, UNKNOWN
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
