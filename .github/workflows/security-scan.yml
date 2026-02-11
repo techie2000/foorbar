@@ -1,3 +1,27 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/security-scan.yml'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      issues: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Build Backend Docker image
         run: docker build -f docker/Dockerfile.backend -t axiom-backend:latest ./backend
 
@@ -176,7 +200,8 @@
                 issueBody += `FROM alpine:${data.fixed}\n`;
                 issueBody += `\`\n\n`;
               } else {
-                issueBody += `Update \\`docker/Dockerfile.backend\` to use a newer base image or install the fixed version of \\`${pkgName}\`.\n`;
+                issueBody += `Update \`docker/Dockerfile.backend\` to use a newer base image `;
+                issueBody += `or install the fixed version of \`${pkgName}\`.\n`;
               }
 
               issueBody += `After updating, rebuild and test:\n`;
@@ -324,7 +349,8 @@
                 issueBody += `FROM alpine:${data.fixed}\n`;
                 issueBody += `\`\n\n`;
               } else {
-                issueBody += `Update \\`docker/Dockerfile.frontend\` to use a newer base image or install the fixed version of \\`${pkgName}\`.\n`;
+                issueBody += `Update \\`docker/Dockerfile.frontend\\` to use a newer base image `;
+                issueBody += `or install the fixed version of \\`${pkgName}\\`.\\n`;
               }
 
               issueBody += `After updating, rebuild and test:\n`;
