@@ -1,10 +1,21 @@
 # LEI Data Acquisition - Quick Start Guide
 
+## Overview
+
+The LEI (Legal Entity Identifier) acquisition system downloads and processes LEI data from GLEIF (Global Legal Entity Identifier Foundation) automatically. The **scheduler runs as part of the backend service** (not a separate container) and handles:
+
+- Daily delta file downloads (weekly changes)
+- Full golden copy downloads (configurable schedule)
+- Automatic change detection and audit trail creation
+
+Downloaded files are stored in `./data/lei/` (excluded from git).
+
 ## Prerequisites
 
 - PostgreSQL database
 - Go 1.21+
 - Axiom backend running
+- ~14 MB for delta files, ~900 MB for full golden copy
 
 ## Setup
 
@@ -238,6 +249,62 @@ SELECT
 FROM source_files
 GROUP BY file_type;
 ```
+
+## GLEIF API Details
+
+### Discovery Endpoint
+
+The system uses GLEIF's discovery endpoint to get latest file URLs dynamically:
+
+```bash
+curl https://goldencopy.gleif.org/api/v2/golden-copies/publishes/latest
+```
+
+Response structure:
+```json
+{
+  "data": {
+    "lei2": {
+      "publish_date": "2026-02-11 08:00:00",
+      "full_file": {
+        "json": {
+          "url": "https://goldencopy.gleif.org/storage/golden-copy-files/...",
+          "size": 909033722,
+          "record_count": 3209464
+        }
+      },
+      "delta_files": {
+        "LastWeek": {
+          "json": {
+            "url": "https://goldencopy.gleif.org/storage/golden-copy-files/...",
+            "size": 13731936,
+            "record_count": 58533
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### File Formats
+
+**Bulk Files** (what the system processes):
+- Format: `{"records": [{"LEI": {"$": "..."}, "Entity": {...}}]}`
+- Values nested in objects with `"$"` property
+- Located in: `./data/lei/`
+
+**Single LEI API** (different format, not currently implemented):
+- Endpoint: `https://api.gleif.org/api/v1/lei-records/{lei}`
+- Different JSON structure without `"$"` nesting
+- Use for real-time single LEI lookups if needed
+
+### Data Directory
+
+Downloaded files are stored in `./data/lei/`:
+- Compressed files: `lei-FULL-*.json.zip`, `lei-DELTA-*.json.zip`
+- Extracted files: `*.json` (auto-cleaned after processing)
+- This directory is excluded from git via `.gitignore`
 
 ## Troubleshooting
 
