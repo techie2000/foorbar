@@ -8,6 +8,7 @@
         "asyncio",
         "Backpressure",
         "Beego",
+        "BIZZ",
         "buildx",
         "coverprofile",
         "cusip",
@@ -50,6 +51,7 @@
         "myregistry",
         "Optim",
         "parallelizable",
+        "PBOX",
         "pdoc",
         "pgcrypto",
         "psql",
@@ -136,6 +138,12 @@
         "psql": true,
         "Tee-Object": true,
         "go": true,
-        "sqlfluff": true
+        "sqlfluff": true,
+        "docker start": true,
+        "ConvertFrom-Json": true,
+        "ConvertTo-Json": true,
+        "Test-Path": true,
+        "Get-Item": true,
+        "ForEach-Object": true
     }
 }

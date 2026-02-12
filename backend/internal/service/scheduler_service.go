@@ -293,26 +293,88 @@ func (s *schedulerService) dailyDeltaSyncLoop() {
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to check for pending source files")
 	} else if len(pendingFiles) > 0 {
-		log.Info().Int("pending_files", len(pendingFiles)).Msg("Found incomplete source files, resuming processing")
+		// Abort old PENDING files (over 24 hours old) to prevent accumulation
+		now := time.Now()
 		for _, file := range pendingFiles {
-			resumeLEI := ""
-			if file.ProcessingStatus == "IN_PROGRESS" && file.LastProcessedLEI != "" {
-				resumeLEI = file.LastProcessedLEI
-				log.Info().
+			// If file is PENDING and created more than 24 hours ago, mark as FAILED
+			if file.ProcessingStatus == "PENDING" && now.Sub(file.CreatedAt) > 24*time.Hour {
+				log.Warn().
 					Str("file_id", file.ID.String()).
 					Str("file_name", file.FileName).
-					Str("resume_from", resumeLEI).
-					Int("processed", file.ProcessedRecords).
-					Int("total", file.TotalRecords).
-					Msg("Resuming incomplete file processing")
-			} else {
-				log.Info().
-					Str("file_id", file.ID.String()).
-					Str("file_name", file.FileName).
-					Msg("Processing pending file")
+					Str("age", now.Sub(file.CreatedAt).String()).
+					Msg("Marking old PENDING file as TIMED_OUT")
+				file.ProcessingStatus = "FAILED"
+				file.ProcessingError = "File pending for more than 24 hours - timed out"
+				file.FailureCategory = "TIMEOUT"
+				s.leiService.UpdateSourceFile(file)
 			}
-			if err := s.leiService.ProcessSourceFileWithResume(file.ID, resumeLEI); err != nil {
-				log.Error().Err(err).Str("file_id", file.ID.String()).Msg("Failed to process pending file")
+		}
+
+		// Re-fetch active pending files after cleanup
+		pendingFiles, err = s.leiService.FindPendingSourceFiles()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to re-fetch pending source files")
+		} else if len(pendingFiles) > 0 {
+			log.Info().Int("pending_files", len(pendingFiles)).Msg("Found incomplete source files, resuming processing")
+
+			// Update file_processing_status when retrying failed jobs
+			for _, file := range pendingFiles {
+				// Determine job type from file type
+				jobType := "DAILY_FULL"
+				if file.FileType == "DELTA" {
+					jobType = "DAILY_DELTA"
+				}
+
+				// Update job status to RUNNING when retrying
+				if jobStatus, err := s.leiService.GetProcessingStatus(jobType); err == nil {
+					if jobStatus.Status == "FAILED" {
+						jobStatus.Status = "RUNNING"
+						now := time.Now()
+						jobStatus.LastRunAt = &now
+						jobStatus.CurrentSourceFileID = &file.ID
+						s.leiService.UpdateProcessingStatus(jobStatus)
+						log.Info().Str("job_type", jobType).Msg("Updated job status to RUNNING for retry")
+					}
+				}
+
+				// FIX: Use checkpoint resume regardless of status (PENDING or IN_PROGRESS)
+				resumeLEI := ""
+				if file.LastProcessedLEI != "" {
+					resumeLEI = file.LastProcessedLEI
+					log.Info().
+						Str("file_id", file.ID.String()).
+						Str("file_name", file.FileName).
+						Str("resume_from", resumeLEI).
+						Int("processed", file.ProcessedRecords).
+						Int("total", file.TotalRecords).
+						Msg("Resuming from checkpoint")
+				} else {
+					log.Info().
+						Str("file_id", file.ID.String()).
+						Str("file_name", file.FileName).
+						Msg("Processing pending file from beginning")
+				}
+
+				if err := s.leiService.ProcessSourceFileWithResume(file.ID, resumeLEI); err != nil {
+					log.Error().Err(err).Str("file_id", file.ID.String()).Msg("Failed to process pending file")
+					// Update job status to FAILED
+					if jobStatus, getErr := s.leiService.GetProcessingStatus(jobType); getErr == nil {
+						jobStatus.Status = "FAILED"
+						jobStatus.ErrorMessage = err.Error()
+						s.leiService.UpdateProcessingStatus(jobStatus)
+					}
+				} else {
+					// Update job status to COMPLETED on success
+					if jobStatus, getErr := s.leiService.GetProcessingStatus(jobType); getErr == nil {
+						jobStatus.Status = "COMPLETED"
+						now := time.Now()
+						jobStatus.LastSuccessAt = &now
+						jobStatus.ErrorMessage = ""
+						jobStatus.CurrentSourceFileID = nil
+						s.leiService.UpdateProcessingStatus(jobStatus)
+						log.Info().Str("job_type", jobType).Msg("Updated job status to COMPLETED after retry success")
+					}
+				}
 			}
 		}
 	} else {

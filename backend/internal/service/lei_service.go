@@ -80,6 +80,7 @@ type LEIService interface {
 	FindPendingSourceFiles() ([]*domain.SourceFile, error)
 	FindRetryableFailedFiles() ([]*domain.SourceFile, error)
 	ResetFailedFileForRetry(fileID uuid.UUID) error
+	UpdateSourceFile(file *domain.SourceFile) error
 
 	// Record management
 	CreateLEIRecord(record *domain.LEIRecord) error
@@ -275,10 +276,13 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 		return fmt.Errorf("failed to find source file: %w", err)
 	}
 
-	// Update status to IN_PROGRESS
+	// Update status to IN_PROGRESS and clear any historical failure data
 	sourceFile.ProcessingStatus = "IN_PROGRESS"
 	startTime := time.Now()
 	sourceFile.ProcessingStartedAt = &startTime
+	// Clear historical failure data from previous attempts
+	sourceFile.FailureCategory = ""
+	sourceFile.ProcessingError = ""
 	if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
 		return fmt.Errorf("failed to update source file status: %w", err)
 	}
@@ -286,14 +290,31 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	// Extract and process file
 	filePath := filepath.Join(s.dataDir, sourceFile.FileName)
 
-	// Unzip file
-	jsonPath, err := s.extractZipFile(filePath)
-	if err != nil {
-		sourceFile.ProcessingStatus = "FAILED"
-		sourceFile.ProcessingError = err.Error()
-		sourceFile.FailureCategory = "FILE_CORRUPTION" // Zip extraction failure
-		s.repo.UpdateSourceFile(sourceFile)
-		return fmt.Errorf("failed to extract file: %w", err)
+	// Check if already extracted (from previous run)
+	jsonPath := filePath + ".extracted.json"
+	if _, err := os.Stat(jsonPath); os.IsNotExist(err) {
+		// Extracted file doesn't exist, try to extract from zip
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			sourceFile.ProcessingStatus = "FAILED"
+			sourceFile.ProcessingError = fmt.Sprintf("source file not found: %s", filePath)
+			sourceFile.FailureCategory = "FILE_MISSING"
+			s.repo.UpdateSourceFile(sourceFile)
+			return fmt.Errorf("source file not found: %s", filePath)
+		}
+
+		// Unzip file
+		var extractErr error
+		jsonPath, extractErr = s.extractZipFile(filePath)
+		if extractErr != nil {
+			sourceFile.ProcessingStatus = "FAILED"
+			sourceFile.ProcessingError = extractErr.Error()
+			sourceFile.FailureCategory = "FILE_CORRUPTION"
+			s.repo.UpdateSourceFile(sourceFile)
+			return fmt.Errorf("failed to extract file: %w", extractErr)
+		}
+		log.Info().Str("json_path", jsonPath).Msg("File extracted successfully")
+	} else {
+		log.Info().Str("json_path", jsonPath).Msg("Using previously extracted file")
 	}
 	defer os.Remove(jsonPath) // Clean up extracted JSON
 
@@ -302,7 +323,7 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 		sourceFile.ProcessingStatus = "FAILED"
 		sourceFile.ProcessingError = err.Error()
 
-		// Categorize the failure for retry logic
+		// Categorize the failure for retry logic (defensive: ensure always set)
 		errorMsg := err.Error()
 		if strings.Contains(errorMsg, "column") && strings.Contains(errorMsg, "does not exist") {
 			sourceFile.FailureCategory = "SCHEMA_ERROR"
@@ -313,6 +334,12 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 		} else if strings.Contains(errorMsg, "invalid JSON") || strings.Contains(errorMsg, "unexpected EOF") {
 			sourceFile.FailureCategory = "FILE_CORRUPTION"
 		} else {
+			// Defensive: ensure category is always set for FAILED status
+			sourceFile.FailureCategory = "UNKNOWN"
+		}
+
+		// Defensive check: ensure failure_category is never empty when status is FAILED
+		if sourceFile.FailureCategory == "" {
 			sourceFile.FailureCategory = "UNKNOWN"
 		}
 
@@ -327,10 +354,12 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 		return fmt.Errorf("failed to process JSON file: %w", err)
 	}
 
-	// Update status to COMPLETED
+	// Update status to COMPLETED and clear any failure fields from previous attempts
 	sourceFile.ProcessingStatus = "COMPLETED"
 	completedTime := time.Now()
 	sourceFile.ProcessingCompletedAt = &completedTime
+	sourceFile.FailureCategory = "" // Clear failure category from any previous failed attempts
+	sourceFile.ProcessingError = "" // Clear error message from any previous failed attempts
 	if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
 		return fmt.Errorf("failed to update source file status: %w", err)
 	}
@@ -396,6 +425,11 @@ func (s *leiService) FindRetryableFailedFiles() ([]*domain.SourceFile, error) {
 // ResetFailedFileForRetry resets a failed file to PENDING for retry
 func (s *leiService) ResetFailedFileForRetry(fileID uuid.UUID) error {
 	return s.repo.ResetFailedFileForRetry(fileID)
+}
+
+// UpdateSourceFile updates a source file record
+func (s *leiService) UpdateSourceFile(file *domain.SourceFile) error {
+	return s.repo.UpdateSourceFile(file)
 }
 
 // processJSONFile parses and processes the LEI JSON file
@@ -522,9 +556,17 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			return nil
 		}
 
+		// Calculate progress for flush message
+		flushPercent := 0.0
+		if totalRecords > 0 {
+			flushPercent = (float64(processedRecords) / float64(totalRecords)) * 100
+		}
+
 		log.Info().
 			Int("batch_size", len(batch)).
 			Int("current_processed", processedRecords).
+			Int("total_records", totalRecords).
+			Float64("percent_complete", flushPercent).
 			Str("last_lei", lastProcessedLEI).
 			Msg("Flushing batch to database")
 
@@ -551,12 +593,19 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 				log.Error().Err(err).Msg("Failed to update source file progress")
 			}
 
+			// Calculate progress percentage
+			percentComplete := 0.0
+			if totalRecords > 0 {
+				percentComplete = (float64(processedRecords) / float64(totalRecords)) * 100
+			}
+
 			log.Info().
 				Int("total_scanned", totalRecords).
 				Int("processed", processedRecords).
 				Int("created", created).
 				Int("updated", updated).
 				Int("failed", failedRecords).
+				Float64("percent_complete", percentComplete).
 				Str("last_lei", lastProcessedLEI).
 				Msg("Batch processing progress")
 		}
@@ -580,7 +629,11 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			continue
 		}
 
-		totalRecords++
+		// FIX: Only increment totalRecords when processing from beginning (not resuming)
+		// When resuming, totalRecords already reflects the full file count from previous attempt
+		if resumeFromLEI == "" {
+			totalRecords++
+		}
 
 		// Check if we should start processing (resume logic)
 		if !shouldProcess {
@@ -590,7 +643,7 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 				// Skip the checkpoint record itself (already processed)
 				continue
 			} else {
-				// Still counting total records even when skipping
+				// Scanning to find resume point - skip but don't increment total
 				continue
 			}
 		}
@@ -736,6 +789,31 @@ func (s *leiService) jsonToDomainRecord(jsonRecord *LEIJSONRecord, sourceFileID 
 		OtherNames:        "[]",
 		ValidationSources: "{}",
 		ChangedFields:     "{}",
+	}
+
+	// Extract transliterated legal name from TransliteratedOtherEntityNames
+	for _, name := range jsonRecord.Entity.TransliteratedOtherEntityNames.OtherEntityName {
+		if name.Type == "AUTO_ASCII_TRANSLITERATED_LEGAL_NAME" {
+			record.TransliteratedLegalName = name.Value
+			break
+		}
+	}
+
+	// Extract other entity names and serialize as JSON array
+	if len(jsonRecord.Entity.OtherEntityNames.OtherEntityName) > 0 {
+		otherNames := make([]map[string]string, 0, len(jsonRecord.Entity.OtherEntityNames.OtherEntityName))
+		for _, name := range jsonRecord.Entity.OtherEntityNames.OtherEntityName {
+			otherNames = append(otherNames, map[string]string{
+				"name":     name.Value,
+				"type":     name.Type,
+				"language": name.Language,
+			})
+		}
+		if otherNamesJSON, err := json.Marshal(otherNames); err == nil {
+			record.OtherNames = string(otherNamesJSON)
+		} else {
+			log.Warn().Err(err).Str("lei", record.LEI).Msg("Failed to marshal other names to JSON")
+		}
 	}
 
 	// Handle additional address lines

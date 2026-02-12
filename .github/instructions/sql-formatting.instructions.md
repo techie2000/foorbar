@@ -208,6 +208,114 @@ COMMENT ON COLUMN source_files.retry_count IS
 | CP04 | Literals UPPERCASE | `NULL`, `TRUE`, `FALSE` |
 | RF04 | Avoid keyword names | Don't use `user`, `order` as identifiers |
 
+## Database Documentation with COMMENT ON
+
+### **MANDATORY**: Every table and column MUST have a COMMENT
+
+**Why This Matters:**
+- Database schema serves as living documentation
+- SQL tools and ORMs display comments in autocomplete
+- DBAs and developers can understand purpose without reading code
+- Comments are visible in `psql \d+` and database IDE tools
+
+### Table Comments
+Every table MUST have a descriptive comment explaining its purpose:
+
+```sql
+CREATE TABLE lei_raw.lei_records (
+    id UUID PRIMARY KEY,
+    lei VARCHAR(20) NOT NULL UNIQUE
+    -- ... columns ...
+);
+
+COMMENT ON TABLE lei_raw.lei_records IS 
+'Raw LEI (Legal Entity Identifier) data from GLEIF. Contains entity legal names, addresses, registration details, and validation status for all global legal entities.';
+```
+
+### Column Comments
+Every column MUST have a comment describing:
+- **Purpose**: What the column stores
+- **Format**: Data format or constraints (if not obvious from type)
+- **Source**: Where data comes from (if external)
+- **Business Rules**: Any validation rules or special meanings
+
+```sql
+COMMENT ON COLUMN lei_raw.lei_records.lei IS 
+'20-character Legal Entity Identifier code (ISO 17442 standard). Unique global identifier for legal entities.';
+
+COMMENT ON COLUMN lei_raw.lei_records.legal_address_country IS 
+'ISO 3166-1 alpha-2 country code (2 letters). Legal registered address country.';
+
+COMMENT ON COLUMN lei_raw.lei_records.entity_status IS 
+'Current status of the legal entity: ACTIVE, INACTIVE, MERGED, etc. From GLEIF EntityStatus enumeration.';
+
+COMMENT ON COLUMN lei_raw.lei_records.other_names IS 
+'JSONB array of alternate entity names. Each object contains: name, type (PREVIOUS_LEGAL_NAME, TRADING_NAME, etc.), and language code.';
+
+COMMENT ON COLUMN lei_raw.source_files.processing_status IS 
+'File processing lifecycle status: PENDING (queued), IN_PROGRESS (actively processing), COMPLETED (success), FAILED (error occurred).';
+
+COMMENT ON COLUMN lei_raw.source_files.failure_category IS 
+'Categorized failure reason (only set when processing_status=FAILED): SCHEMA_ERROR, NETWORK_ERROR, FILE_CORRUPTION, FILE_MISSING, TIMEOUT, or UNKNOWN. Empty string for non-failed records.';
+```
+
+### When to Write Comments
+
+**In CREATE TABLE migrations:**
+```sql
+CREATE TABLE example (
+    id UUID PRIMARY KEY,
+    status VARCHAR(20)
+);
+
+-- Add comments immediately after CREATE TABLE
+COMMENT ON TABLE example IS 'Description of table purpose';
+COMMENT ON COLUMN example.id IS 'Unique identifier (UUID v4)';
+COMMENT ON COLUMN example.status IS 'Status values: ACTIVE, PAUSED, DELETED';
+```
+
+**In ALTER TABLE migrations:**
+```sql
+ALTER TABLE example
+    ADD COLUMN retry_count INTEGER DEFAULT 0;
+
+-- Add comment for new column
+COMMENT ON COLUMN example.retry_count IS 'Number of retry attempts (0-3). Incremented on FAILED status; reset to 0 on success.';
+```
+
+### Comment Style Guide
+
+✅ **GOOD Comments:**
+- Start with what the field stores
+- Include format/constraints
+- Mention enumerations or valid values
+- Note relationships to other tables
+- Explain business rules
+
+❌ **BAD Comments (too vague):**
+```sql
+COMMENT ON COLUMN users.email IS 'Email';  -- Says nothing useful
+COMMENT ON COLUMN lei_records.lei IS 'LEI code';  -- What's an LEI?
+```
+
+✅ **GOOD Comments (descriptive):**
+```sql
+COMMENT ON COLUMN users.email IS 'User email address (RFC 5322 format). Must be unique. Used for login and notifications.';
+COMMENT ON COLUMN lei_records.lei IS '20-character Legal Entity Identifier (ISO 17442). Format: 18 alphanumeric + 2-digit checksum. Globally unique.';
+```
+
+### Migration Checklist
+
+When creating a migration that adds/modifies schema:
+
+- [ ] Every new table has a COMMENT ON TABLE
+- [ ] Every new column has a COMMENT ON COLUMN
+- [ ] Comments explain PURPOSE, not just restating the column name
+- [ ] Enumerations list all valid values
+- [ ] Foreign keys mention the referenced table
+- [ ] JSONB columns describe the expected structure
+- [ ] Constraints are explained (why this length? why nullable?)
+
 ## Auto-Formatting
 
 Always run SQLFluff before committing:

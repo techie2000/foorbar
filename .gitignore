@@ -1,5 +1,6 @@
 # Build artifacts
 /backend/bin/
+/bin/
 /backend/tmp/
 /backend/*.exe
 /backend/*.dll

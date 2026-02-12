@@ -23,8 +23,8 @@ type LEIRecord struct {
 	LegalAddressLine2      string `gorm:"column:legal_address_line_2;size:500" json:"legal_address_line_2"`
 	LegalAddressLine3      string `gorm:"column:legal_address_line_3;size:500" json:"legal_address_line_3"`
 	LegalAddressLine4      string `gorm:"column:legal_address_line_4;size:500" json:"legal_address_line_4"`
-	LegalAddressCity       string `gorm:"size:100" json:"legal_address_city"`
-	LegalAddressRegion     string `gorm:"size:100" json:"legal_address_region"`
+	LegalAddressCity       string `gorm:"size:255" json:"legal_address_city"`
+	LegalAddressRegion     string `gorm:"size:255" json:"legal_address_region"`
 	LegalAddressCountry    string `gorm:"size:2" json:"legal_address_country"` // ISO 3166-1 alpha-2
 	LegalAddressPostalCode string `gorm:"size:255" json:"legal_address_postal_code"`
 
@@ -33,22 +33,22 @@ type LEIRecord struct {
 	HQAddressLine2      string `gorm:"column:hq_address_line_2;size:500" json:"hq_address_line_2"`
 	HQAddressLine3      string `gorm:"column:hq_address_line_3;size:500" json:"hq_address_line_3"`
 	HQAddressLine4      string `gorm:"column:hq_address_line_4;size:500" json:"hq_address_line_4"`
-	HQAddressCity       string `gorm:"size:100" json:"hq_address_city"`
-	HQAddressRegion     string `gorm:"size:100" json:"hq_address_region"`
+	HQAddressCity       string `gorm:"size:255" json:"hq_address_city"`
+	HQAddressRegion     string `gorm:"size:255" json:"hq_address_region"`
 	HQAddressCountry    string `gorm:"size:2" json:"hq_address_country"` // ISO 3166-1 alpha-2
 	HQAddressPostalCode string `gorm:"size:255" json:"hq_address_postal_code"`
 
 	// Registration
-	RegistrationAuthority   string `gorm:"size:100" json:"registration_authority"`
-	RegistrationAuthorityID string `gorm:"size:100" json:"registration_authority_id"`
-	RegistrationNumber      string `gorm:"size:100" json:"registration_number"`
+	RegistrationAuthority   string `gorm:"size:255" json:"registration_authority"`
+	RegistrationAuthorityID string `gorm:"size:255" json:"registration_authority_id"`
+	RegistrationNumber      string `gorm:"size:255" json:"registration_number"`
 	EntityCategory          string `gorm:"size:255" json:"entity_category"`
 	EntitySubCategory       string `gorm:"size:255" json:"entity_sub_category"`
-	EntityLegalForm         string `gorm:"size:100" json:"entity_legal_form"`
+	EntityLegalForm         string `gorm:"size:255" json:"entity_legal_form"`
 	EntityStatus            string `gorm:"size:255" json:"entity_status"`
 
 	// Associated entities
-	ManagingLOU  string `gorm:"size:100" json:"managing_lou"` // Local Operating Unit
+	ManagingLOU  string `gorm:"size:255" json:"managing_lou"` // Local Operating Unit
 	SuccessorLEI string `gorm:"size:20" json:"successor_lei"`
 
 	// Dates
@@ -58,7 +58,7 @@ type LEIRecord struct {
 
 	// Validation
 	ValidationSources   string `gorm:"type:jsonb" json:"validation_sources"`
-	ValidationAuthority string `gorm:"size:100" json:"validation_authority"`
+	ValidationAuthority string `gorm:"size:255" json:"validation_authority"`
 
 	// Audit and provenance
 	SourceFileID  *uuid.UUID  `gorm:"type:uuid" json:"source_file_id"`

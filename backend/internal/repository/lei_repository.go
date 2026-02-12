@@ -243,92 +243,145 @@ func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int,
 		valueStrings := make([]string, 0, len(batch))
 		valueArgs := make([]interface{}, 0, len(batch)*20)
 
+		// Generate all values in Go, use placeholders for everything
+		now := time.Now()
+		emptyChangedFields := "{}"
+
 		for _, record := range batch {
-			valueStrings = append(valueStrings, "(gen_random_uuid(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 'system', 'system', '{}')")
+			// Use placeholders for ALL fields (41 total)
+			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+
+			// Generate ID and timestamps in Go
+			newID := uuid.New()
+
 			valueArgs = append(valueArgs,
-				record.LEI,
-				record.LegalName,
-				record.EntityStatus,
-				record.LegalAddressLine1,
-				record.LegalAddressCity,
-				record.LegalAddressRegion,
-				record.LegalAddressCountry,
-				record.LegalAddressPostalCode,
-				record.HQAddressLine1,
-				record.HQAddressCity,
-				record.HQAddressRegion,
-				record.HQAddressCountry,
-				record.HQAddressPostalCode,
-				record.InitialRegistrationDate,
-				record.LastUpdateDate,
-				record.NextRenewalDate,
-				record.ManagingLOU,
-				record.ValidationSources,
-				record.EntityCategory,
-				record.EntitySubCategory,
-				record.SourceFileID,
+				newID,                          // id
+				record.LEI,                     // lei
+				record.LegalName,               // legal_name
+				record.TransliteratedLegalName, // transliterated_legal_name
+				record.OtherNames,              // other_names
+				record.LegalAddressLine1,       // legal_address_line_1
+				record.LegalAddressLine2,       // legal_address_line_2
+				record.LegalAddressLine3,       // legal_address_line_3
+				record.LegalAddressLine4,       // legal_address_line_4
+				record.LegalAddressCity,        // legal_address_city
+				record.LegalAddressRegion,      // legal_address_region
+				record.LegalAddressCountry,     // legal_address_country
+				record.LegalAddressPostalCode,  // legal_address_postal_code
+				record.HQAddressLine1,          // hq_address_line_1
+				record.HQAddressLine2,          // hq_address_line_2
+				record.HQAddressLine3,          // hq_address_line_3
+				record.HQAddressLine4,          // hq_address_line_4
+				record.HQAddressCity,           // hq_address_city
+				record.HQAddressRegion,         // hq_address_region
+				record.HQAddressCountry,        // hq_address_country
+				record.HQAddressPostalCode,     // hq_address_postal_code
+				record.RegistrationAuthority,   // registration_authority
+				record.RegistrationAuthorityID, // registration_authority_id
+				record.RegistrationNumber,      // registration_number
+				record.EntityCategory,          // entity_category
+				record.EntitySubCategory,       // entity_sub_category
+				record.EntityLegalForm,         // entity_legal_form
+				record.EntityStatus,            // entity_status
+				record.SuccessorLEI,            // successor_lei
+				record.ValidationAuthority,     // validation_authority
+				record.InitialRegistrationDate, // initial_registration_date
+				record.LastUpdateDate,          // last_update_date
+				record.NextRenewalDate,         // next_renewal_date
+				record.ManagingLOU,             // managing_lou
+				record.ValidationSources,       // validation_sources
+				record.SourceFileID,            // source_file_id
+				now,                            // created_at
+				now,                            // updated_at
+				"system",                       // created_by
+				"system",                       // updated_by
+				emptyChangedFields,             // changed_fields
 			)
 		}
 
 		// Execute upsert with RETURNING to get IDs
 		stmt := fmt.Sprintf(`
 			INSERT INTO lei_raw.lei_records (
-				id, lei, legal_name, entity_status,
-				legal_address_line_1, legal_address_city, legal_address_region,
-				legal_address_country, legal_address_postal_code,
-				hq_address_line_1, hq_address_city, hq_address_region,
-				hq_address_country, hq_address_postal_code,
+				id, lei, legal_name, transliterated_legal_name, other_names,
+				legal_address_line_1, legal_address_line_2, legal_address_line_3, legal_address_line_4,
+				legal_address_city, legal_address_region, legal_address_country, legal_address_postal_code,
+				hq_address_line_1, hq_address_line_2, hq_address_line_3, hq_address_line_4,
+				hq_address_city, hq_address_region, hq_address_country, hq_address_postal_code,
+				registration_authority, registration_authority_id, registration_number,
+				entity_category, entity_sub_category, entity_legal_form,
+				entity_status, successor_lei, validation_authority,
 				initial_registration_date, last_update_date, next_renewal_date,
-				managing_lou, validation_sources, entity_category, entity_sub_category,
+				managing_lou, validation_sources,
 				source_file_id,
 				created_at, updated_at, created_by, updated_by, changed_fields
 			) VALUES %s
 			ON CONFLICT (lei) DO UPDATE SET
 				legal_name = EXCLUDED.legal_name,
+				transliterated_legal_name = EXCLUDED.transliterated_legal_name,
+				other_names = EXCLUDED.other_names,
 				entity_status = EXCLUDED.entity_status,
 				legal_address_line_1 = EXCLUDED.legal_address_line_1,
+				legal_address_line_2 = EXCLUDED.legal_address_line_2,
+				legal_address_line_3 = EXCLUDED.legal_address_line_3,
+				legal_address_line_4 = EXCLUDED.legal_address_line_4,
 				legal_address_city = EXCLUDED.legal_address_city,
 				legal_address_region = EXCLUDED.legal_address_region,
 				legal_address_country = EXCLUDED.legal_address_country,
 				legal_address_postal_code = EXCLUDED.legal_address_postal_code,
 				hq_address_line_1 = EXCLUDED.hq_address_line_1,
+				hq_address_line_2 = EXCLUDED.hq_address_line_2,
+				hq_address_line_3 = EXCLUDED.hq_address_line_3,
+				hq_address_line_4 = EXCLUDED.hq_address_line_4,
 				hq_address_city = EXCLUDED.hq_address_city,
 				hq_address_region = EXCLUDED.hq_address_region,
 				hq_address_country = EXCLUDED.hq_address_country,
 				hq_address_postal_code = EXCLUDED.hq_address_postal_code,
+				registration_authority = EXCLUDED.registration_authority,
+				registration_authority_id = EXCLUDED.registration_authority_id,
+				registration_number = EXCLUDED.registration_number,
+				entity_category = EXCLUDED.entity_category,
+				entity_sub_category = EXCLUDED.entity_sub_category,
+				entity_legal_form = EXCLUDED.entity_legal_form,
+				successor_lei = EXCLUDED.successor_lei,
+				validation_authority = EXCLUDED.validation_authority,
 				initial_registration_date = EXCLUDED.initial_registration_date,
 				last_update_date = EXCLUDED.last_update_date,
 				next_renewal_date = EXCLUDED.next_renewal_date,
 				managing_lou = EXCLUDED.managing_lou,
 				validation_sources = EXCLUDED.validation_sources,
-				entity_category = EXCLUDED.entity_category,
-				entity_sub_category = EXCLUDED.entity_sub_category,
 				source_file_id = EXCLUDED.source_file_id,
 				updated_at = NOW(),
 				updated_by = 'system'
-			RETURNING id, lei
-		`, strings.Join(valueStrings, ","))
+	`, strings.Join(valueStrings, ","))
 
-		// Execute and collect returned IDs
-		type returnedRow struct {
-			ID  uuid.UUID
-			LEI string
-		}
-		var returned []returnedRow
-		if err := tx.Raw(stmt, valueArgs...).Scan(&returned).Error; err != nil {
-			tx.Rollback()
+		// Execute batch upsert using Exec (better placeholder handling than Raw)
+		result := tx.Exec(stmt, valueArgs...)
+		if result.Error != nil {
+			// Calculate debug info
+			stmtPreview := stmt
+			if len(stmt) > 2000 {
+				stmtPreview = stmt[:2000]
+			}
+
 			log.Error().
-				Err(err).
+				Err(result.Error).
 				Int("batch_start", i).
 				Int("batch_end", end).
+				Int("value_args_count", len(valueArgs)).
+				Int("expected_per_record", 41).
+				Int("records_in_batch", len(batch)).
+				Str("stmt_preview", stmtPreview).
 				Msg("CRITICAL: Batch upsert failed")
-			return 0, 0, fmt.Errorf("failed to batch upsert records %d-%d: %w", i, end, err)
+			return 0, 0, fmt.Errorf("failed to batch upsert records %d-%d: %w", i, end, result.Error)
 		}
 
-		// Create map of LEI -> ID from returned rows
+		// Get IDs from valueArgs we just inserted (first value of each record)
 		leiToID := make(map[string]uuid.UUID)
-		for _, row := range returned {
-			leiToID[row.LEI] = row.ID
+		for idx, record := range batch {
+			// ID is at position: idx * 41 (since we have 41 values per record)
+			idPos := idx * 41
+			insertedID := valueArgs[idPos].(uuid.UUID)
+			leiToID[record.LEI] = insertedID
 		}
 
 		// Build audit records for this batch
