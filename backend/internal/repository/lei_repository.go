@@ -20,7 +20,9 @@ type LEIRepository interface {
 	FindLEIByLEI(lei string) (*domain.LEIRecord, error)
 	FindLEIByID(id string) (*domain.LEIRecord, error)
 	FindAllLEI(limit, offset int) ([]*domain.LEIRecord, error)
+	FindAllLEIWithFilters(limit, offset int, search, status, category, country, sortBy, sortOrder string) ([]*domain.LEIRecord, error)
 	CountLEIRecords() (int64, error)
+	GetDistinctCountries() ([]string, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
 	UpsertLEIRecord(record *domain.LEIRecord) (bool, error)              // Returns true if updated, false if created
 	BatchUpsertLEIRecords(records []*domain.LEIRecord) (int, int, error) // Returns (created, updated, error)
@@ -85,6 +87,67 @@ func (r *leiRepository) FindAllLEI(limit, offset int) ([]*domain.LEIRecord, erro
 	return records, nil
 }
 
+// FindAllLEIWithFilters retrieves LEI records with search and filters
+func (r *leiRepository) FindAllLEIWithFilters(limit, offset int, search, status, category, country, sortBy, sortOrder string) ([]*domain.LEIRecord, error) {
+	var records []*domain.LEIRecord
+	query := r.db.Limit(limit).Offset(offset).Preload("SourceFile")
+
+	// Apply search filter (LEI code or legal name)
+	if search != "" {
+		query = query.Where("lei ILIKE ? OR legal_name ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	// Apply status filter
+	if status != "" {
+		if status == "NULL" {
+			// Filter for records where entity_status IS NULL or empty string
+			query = query.Where("entity_status IS NULL OR entity_status = ''")
+		} else {
+			query = query.Where("entity_status = ?", status)
+		}
+	}
+
+	// Apply category filter
+	if category != "" {
+		query = query.Where("entity_category = ?", category)
+	}
+
+	// Apply country filter
+	if country != "" {
+		query = query.Where("legal_address_country = ?", country)
+	}
+
+	// Apply sorting (default to legal_name ascending)
+	if sortBy == "" {
+		sortBy = "legal_name"
+	}
+	if sortOrder == "" || (sortOrder != "asc" && sortOrder != "desc") {
+		sortOrder = "asc"
+	}
+
+	// Validate sortBy field to prevent SQL injection
+	validSortFields := map[string]bool{
+		"lei":                   true,
+		"legal_name":            true,
+		"entity_status":         true,
+		"entity_category":       true,
+		"legal_address_country": true,
+		"last_update_date":      true,
+	}
+
+	if validSortFields[sortBy] {
+		query = query.Order(sortBy + " " + sortOrder)
+	} else {
+		// Default to legal_name if invalid sort field
+		query = query.Order("legal_name " + sortOrder)
+	}
+
+	if err := query.Find(&records).Error; err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
 // CountLEIRecords returns the total count of LEI records
 func (r *leiRepository) CountLEIRecords() (int64, error) {
 	var count int64
@@ -92,6 +155,20 @@ func (r *leiRepository) CountLEIRecords() (int64, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// GetDistinctCountries returns a sorted list of unique countries from the LEI database
+func (r *leiRepository) GetDistinctCountries() ([]string, error) {
+	var countries []string
+	err := r.db.Model(&domain.LEIRecord{}).
+		Distinct("legal_address_country").
+		Where("legal_address_country IS NOT NULL AND legal_address_country != ''").
+		Order("legal_address_country ASC").
+		Pluck("legal_address_country", &countries).Error
+	if err != nil {
+		return nil, err
+	}
+	return countries, nil
 }
 
 // UpdateLEIRecord updates an existing LEI record

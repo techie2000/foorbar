@@ -59,31 +59,44 @@ func JWTAuth(cfg *config.Config) gin.HandlerFunc {
 func CORS(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-		
+
+		// DEBUG: Log CORS configuration and request
+		fmt.Printf("[CORS DEBUG] Origin: %s, Allowed Origins: %v\n", origin, cfg.CORS.AllowedOrigins)
+
 		// Check if the origin is in the allowed list
 		allowed := false
 		for _, allowedOrigin := range cfg.CORS.AllowedOrigins {
+			fmt.Printf("[CORS DEBUG] Checking: %s == %s\n", allowedOrigin, origin)
 			if allowedOrigin == "*" || allowedOrigin == origin {
 				allowed = true
+				fmt.Printf("[CORS DEBUG] MATCH FOUND!\n")
 				break
 			}
 		}
-		
+
+		fmt.Printf("[ CORS DEBUG] Allowed: %v\n", allowed)
+
 		// Set CORS headers if origin is allowed
 		if allowed {
 			if origin != "" {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+				fmt.Printf("[CORS DEBUG] Set Access-Control-Allow-Origin: %s\n", origin)
 			} else if len(cfg.CORS.AllowedOrigins) > 0 && cfg.CORS.AllowedOrigins[0] == "*" {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+				fmt.Printf("[CORS DEBUG] Set Access-Control-Allow-Origin: *\n")
 			}
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.Writer.Header().Set("Vary", "Origin")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(cfg.CORS.AllowedMethods, ","))
+			c.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(cfg.CORS.AllowedHeaders, ","))
 		}
-		
-		c.Writer.Header().Set("Access-Control-Allow-Methods", strings.Join(cfg.CORS.AllowedMethods, ","))
-		c.Writer.Header().Set("Access-Control-Allow-Headers", strings.Join(cfg.CORS.AllowedHeaders, ","))
 
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
+			if allowed {
+				c.AbortWithStatus(http.StatusNoContent)
+			} else {
+				c.AbortWithStatus(http.StatusForbidden)
+			}
 			return
 		}
 

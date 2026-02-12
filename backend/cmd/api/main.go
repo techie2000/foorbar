@@ -17,6 +17,7 @@ import (
 	"github.com/techie2000/axiom/internal/middleware"
 	"github.com/techie2000/axiom/internal/repository"
 	"github.com/techie2000/axiom/internal/service"
+	"github.com/techie2000/axiom/internal/version"
 	"github.com/techie2000/axiom/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -226,6 +227,25 @@ func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
+	// Version endpoint
+	router.GET("/version", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"version":     version.Version,
+			"gitCommit":   version.GitCommit,
+			"buildDate":   version.BuildDate,
+			"fullVersion": version.GetFullVersion(),
+		})
+	})
+
+	// Debug CORS config (remove in production)
+	router.GET("/debug/cors", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"allowed_origins": cfg.CORS.AllowedOrigins,
+			"allowed_methods": cfg.CORS.AllowedMethods,
+			"allowed_headers": cfg.CORS.AllowedHeaders,
+		})
+	})
+
 	// Swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -239,28 +259,35 @@ func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			auth.POST("/register", h.Auth.Register)
 		}
 
+		// Public monitoring routes (no auth required)
+		v1.GET("/lei/status/:jobType", h.LEI.GetProcessingStatus)
+
+		// Public reference data routes (read-only, no auth required)
+		v1.GET("/countries", h.Country.List)
+		v1.GET("/countries/:id", h.Country.Get)
+		v1.GET("/currencies", h.Currency.List)
+		v1.GET("/currencies/:id", h.Currency.Get)
+
+		// Public LEI data routes (read-only, no auth required)
+		v1.GET("/lei", h.LEI.ListLEI)
+		v1.GET("/lei-countries", h.LEI.GetDistinctCountries)
+		v1.GET("/lei/record/:id", h.LEI.GetLEIByID)
+		v1.GET("/lei/:lei/audit", h.LEI.GetAuditHistory)
+		v1.GET("/lei/:lei", h.LEI.GetLEIByCode)
+
 		// Protected routes (require JWT)
 		protected := v1.Group("")
 		protected.Use(middleware.JWTAuth(cfg))
 		{
-			// Domain data routes
-			countries := protected.Group("/countries")
-			{
-				countries.GET("", h.Country.List)
-				countries.GET("/:id", h.Country.Get)
-				countries.POST("", h.Country.Create)
-				countries.PUT("/:id", h.Country.Update)
-				countries.DELETE("/:id", h.Country.Delete)
-			}
+			// Protected write operations for countries and currencies
+			protected.POST("/countries", h.Country.Create)
+			protected.PUT("/countries/:id", h.Country.Update)
+			protected.DELETE("/countries/:id", h.Country.Delete)
+			protected.POST("/currencies", h.Currency.Create)
+			protected.PUT("/currencies/:id", h.Currency.Update)
+			protected.DELETE("/currencies/:id", h.Currency.Delete)
 
-			currencies := protected.Group("/currencies")
-			{
-				currencies.GET("", h.Currency.List)
-				currencies.GET("/:id", h.Currency.Get)
-				currencies.POST("", h.Currency.Create)
-				currencies.PUT("/:id", h.Currency.Update)
-				currencies.DELETE("/:id", h.Currency.Delete)
-			}
+			// Domain data routes
 
 			entities := protected.Group("/entities")
 			{
@@ -298,16 +325,11 @@ func setupRouter(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 				ssis.DELETE("/:id", h.SSI.Delete)
 			}
 
-			// LEI routes
+			// LEI management routes (write operations only)
 			lei := protected.Group("/lei")
 			{
-				lei.GET("", h.LEI.ListLEI)
-				lei.GET("/:lei", h.LEI.GetLEIByCode)
-				lei.GET("/record/:id", h.LEI.GetLEIByID)
-				lei.GET("/:lei/audit", h.LEI.GetAuditHistory)
 				lei.POST("/sync/full", h.LEI.TriggerFullSync)
 				lei.POST("/sync/delta", h.LEI.TriggerDeltaSync)
-				lei.GET("/status/:jobType", h.LEI.GetProcessingStatus)
 				lei.POST("/source-file/:id/resume", h.LEI.ResumeProcessing)
 			}
 

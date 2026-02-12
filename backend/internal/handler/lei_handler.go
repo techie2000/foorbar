@@ -23,6 +23,23 @@ func NewLEIHandler(leiService service.LEIService, schedulerService service.Sched
 	}
 }
 
+// GetDistinctCountries returns a list of all unique countries in the LEI database
+// @Summary Get distinct countries
+// @Description Get sorted list of unique countries from LEI records
+// @Tags LEI
+// @Produce json
+// @Success 200 {array} string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/lei-countries [get]
+func (h *LEIHandler) GetDistinctCountries(c *gin.Context) {
+	countries, err := h.leiService.GetDistinctCountries()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve countries"})
+		return
+	}
+	c.JSON(http.StatusOK, countries)
+}
+
 // GetLEIByCode retrieves an LEI record by LEI code
 // @Summary Get LEI record by code
 // @Description Get a specific LEI record by its LEI code
@@ -36,13 +53,13 @@ func NewLEIHandler(leiService service.LEIService, schedulerService service.Sched
 // @Router /api/v1/lei/{lei} [get]
 func (h *LEIHandler) GetLEIByCode(c *gin.Context) {
 	lei := c.Param("lei")
-	
+
 	record, err := h.leiService.GetLEIByCode(lei)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "LEI record not found"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, record)
 }
 
@@ -59,41 +76,54 @@ func (h *LEIHandler) GetLEIByCode(c *gin.Context) {
 // @Router /api/v1/lei/record/{id} [get]
 func (h *LEIHandler) GetLEIByID(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	record, err := h.leiService.GetLEIByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "LEI record not found"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, record)
 }
 
-// ListLEI retrieves all LEI records with pagination
+// ListLEI retrieves all LEI records with pagination, search, and filters
 // @Summary List LEI records
-// @Description Get a paginated list of LEI records
+// @Description Get a paginated list of LEI records with optional search and filters
 // @Tags LEI
 // @Accept json
 // @Produce json
 // @Param limit query int false "Limit" default(50)
 // @Param offset query int false "Offset" default(0)
+// @Param search query string false "Search term (LEI code or legal name)"
+// @Param status query string false "Entity status filter (e.g., ACTIVE, INACTIVE)"
+// @Param category query string false "Entity category filter (e.g., GENERAL, FUND)"
+// @Param country query string false "Country code filter (e.g., US, GB)"
+// @Param sortBy query string false "Sort field (lei, legal_name, entity_status, entity_category, legal_address_country, last_update_date)"
+// @Param sortOrder query string false "Sort order (asc, desc)" default(asc)
 // @Success 200 {array} domain.LEIRecord
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/lei [get]
 func (h *LEIHandler) ListLEI(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	
-	if limit > 100 {
-		limit = 100
+	search := c.Query("search")
+	status := c.Query("status")
+	category := c.Query("category")
+	country := c.Query("country")
+	sortBy := c.DefaultQuery("sortBy", "legal_name")
+	sortOrder := c.DefaultQuery("sortOrder", "asc")
+
+	// Allow up to 501 records (frontend requests itemsPerPage + 1 to detect more pages)
+	if limit > 501 {
+		limit = 501
 	}
-	
-	records, err := h.leiService.GetAllLEI(limit, offset)
+
+	records, err := h.leiService.GetAllLEIWithFilters(limit, offset, search, status, category, country, sortBy, sortOrder)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve LEI records"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, records)
 }
 
@@ -111,13 +141,13 @@ func (h *LEIHandler) ListLEI(c *gin.Context) {
 func (h *LEIHandler) GetAuditHistory(c *gin.Context) {
 	lei := c.Param("lei")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	
+
 	audits, err := h.leiService.GetAuditHistory(lei, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve audit history"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, audits)
 }
 
@@ -136,7 +166,7 @@ func (h *LEIHandler) TriggerFullSync(c *gin.Context) {
 			// Log error but don't fail the request
 		}
 	}()
-	
+
 	c.JSON(http.StatusAccepted, gin.H{"message": "Full sync triggered"})
 }
 
@@ -155,7 +185,7 @@ func (h *LEIHandler) TriggerDeltaSync(c *gin.Context) {
 			// Log error but don't fail the request
 		}
 	}()
-	
+
 	c.JSON(http.StatusAccepted, gin.H{"message": "Delta sync triggered"})
 }
 
@@ -172,13 +202,13 @@ func (h *LEIHandler) TriggerDeltaSync(c *gin.Context) {
 // @Router /api/v1/lei/status/{jobType} [get]
 func (h *LEIHandler) GetProcessingStatus(c *gin.Context) {
 	jobType := c.Param("jobType")
-	
+
 	status, err := h.leiService.GetProcessingStatus(jobType)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Processing status not found"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, status)
 }
 
@@ -195,18 +225,18 @@ func (h *LEIHandler) GetProcessingStatus(c *gin.Context) {
 // @Router /api/v1/lei/source-file/{id}/resume [post]
 func (h *LEIHandler) ResumeProcessing(c *gin.Context) {
 	idStr := c.Param("id")
-	
+
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source file ID"})
 		return
 	}
-	
+
 	go func() {
 		if err := h.leiService.ProcessSourceFile(id); err != nil {
 			// Log error but don't fail the request
 		}
 	}()
-	
+
 	c.JSON(http.StatusAccepted, gin.H{"message": "Processing resumed"})
 }

@@ -22,8 +22,11 @@ log:
 
 cors:
   allowed_origins:
-    - http://localhost:3000
-    - http://localhost:8080
+    - http://localhost:3000      # Default Next.js dev port
+    - http://localhost:8080      # Backend swagger
+    - http://localhost:13000     # Dev environment frontend
+    - http://localhost:23000     # UAT environment frontend
+    - http://localhost:33000     # Prod environment frontend
   allowed_methods:
     - GET
     - POST

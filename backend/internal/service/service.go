@@ -25,7 +25,7 @@ func NewServices(repos *repository.Repositories, leiDataDir string) *Services {
 		Instrument: NewInstrumentService(repos.Instrument),
 		Account:    NewAccountService(repos.Account),
 		SSI:        NewSSIService(repos.SSI),
-		LEI:        NewLEIService(repos.LEI, leiDataDir),
+		LEI:        NewLEIService(repos.LEI, repos.Country, leiDataDir),
 	}
 }
 

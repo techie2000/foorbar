@@ -51,11 +51,15 @@ services:
       SERVER_PORT: ${SERVER_PORT}
       SERVER_MODE: ${SERVER_MODE}
       LEI_DATA_DIR: ${LEI_DATA_DIR}
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:13000,http://localhost:23000,http://localhost:33000"
+      CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+      CORS_ALLOWED_HEADERS: "Origin,Content-Type,Authorization,Accept"
     ports:
       - "${BACKEND_PORT}:8080"
     volumes:
-      - ./data/lei:/root/data/lei  # Bind mount for easy dev access
-      - ./log:/root/log              # Persist logs for debugging
+      - ./data/lei:/root/data/lei      # Bind Mount for easy dev access
+      - ./log:/root/log                 # Persist logs for debugging
+      - ./backend/config.yaml:/root/config/config.yaml:ro  # Mount config file with CORS settings
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,8 +76,16 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-frontend
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NODE_ENV: development
     ports:
       - "${FRONTEND_PORT}:3000"
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend:/app
+      # Prevent node_modules and .next from being overwritten
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
     depends_on:
       - backend
     restart: unless-stopped

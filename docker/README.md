@@ -31,6 +31,17 @@ This directory contains Dockerfiles for the Axiom application with environment-s
 **Features:**
 - Uses `--legacy-peer-deps` flag to handle React 19 dependency conflicts with older packages
 - Multi-stage build for optimized production images
+- **Development mode:** Supports hot reload via volume mounts (see `docker-compose.dev.yml`)
+
+**Hot Reload in Development:**
+When using `docker-compose.dev.yml`, the frontend runs with:
+- Source code mounted as volume (`./frontend:/app`)
+- Node modules and .next preserved in container
+- `npm run dev` command for Next.js Fast Refresh
+- Changes appear instantly without Docker rebuild
+
+**Production Mode:**
+Uses `npm start` to run pre-built static assets from multi-stage build.
 
 ## Usage
 

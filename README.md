@@ -198,6 +198,33 @@ Once started, each environment is accessible at:
 - PostgreSQL: localhost:35432
 - RabbitMQ Management: http://localhost:35673
 
+### Hot Reload for Frontend Development
+
+The development environment (`docker-compose.dev.yml`) includes hot reload for the frontend:
+
+**Features:**
+- ✅ Instant code changes (no rebuild required)
+- ✅ Next.js development mode with Fast Refresh
+- ✅ Source code mounted as volume
+- ✅ Native Next.js development workflow
+
+**Configuration:**
+```yaml
+volumes:
+  - ./frontend:/app          # Mount source code
+  - /app/node_modules        # Preserve dependencies
+  - /app/.next               # Preserve build cache
+command: npm run dev         # Development mode
+```
+
+**Benefits:**
+- Frontend changes appear instantly in browser
+- No 2-3 minute Docker rebuild cycle
+- Standard Next.js hot module replacement (HMR)
+- Ideal for active frontend development
+
+**Note:** Backend still requires rebuild for Go code changes. For backend hot reload, consider using `air` (Go live reload tool).
+
 ### Local Development with Docker Compose (Legacy)
 
 ```bash

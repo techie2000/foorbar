@@ -1,0 +1,354 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import ThemeToggle from '../components/ThemeToggle'
+
+interface SourceFile {
+  id: string
+  file_name: string
+  processing_status: string
+  total_records: number
+  processed_records: number
+  failed_records: number
+  last_processed_lei: string
+  failure_category: string
+  processing_error: string
+}
+
+interface ProcessingStatus {
+  id: string
+  job_type: string
+  status: string
+  last_run_at: string | null
+  next_run_at: string | null
+  last_success_at: string | null
+  current_source_file_id: string | null
+  current_source_file: SourceFile | null
+  error_message: string
+}
+
+export default function LEIStatusPage() {
+  const [fullStatus, setFullStatus] = useState<ProcessingStatus | null>(null)
+  const [deltaStatus, setDeltaStatus] = useState<ProcessingStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+
+  const API_BASE_URL = typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18080')
+    : 'http://backend:8080'
+
+  const fetchStatus = async () => {
+    try {
+      // For now, we'll call without auth - you'll need to add JWT token
+      const [fullResponse, deltaResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/lei/status/DAILY_FULL`, {
+          headers: {
+            'Accept': 'application/json',
+            // Add auth when ready: 'Authorization': `Bearer ${token}`
+          }
+        }).catch(() => null),
+        fetch(`${API_BASE_URL}/api/v1/lei/status/DAILY_DELTA`, {
+          headers: {
+            'Accept': 'application/json',
+            // Add auth when ready: 'Authorization': `Bearer ${token}`
+          }
+        }).catch(() => null)
+      ])
+
+      if (fullResponse && fullResponse.ok) {
+        const fullData = await fullResponse.json()
+        console.log('LEI Full Status:', fullData)
+        setFullStatus(fullData)
+      } else {
+        console.error('Failed to fetch full status:', fullResponse?.status)
+      }
+
+      if (deltaResponse && deltaResponse.ok) {
+        const deltaData = await deltaResponse.json()
+        console.log('LEI Delta Status:', deltaData)
+        setDeltaStatus(deltaData)
+      } else {
+        console.error('Failed to fetch delta status:', deltaResponse?.status)
+      }
+
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch status')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      fetchStatus()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(fetchStatus, 5000) // Refresh every 5 seconds
+    return () => clearInterval(interval)
+  }, [autoRefresh])
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString || dateString.startsWith('0001-')) return 'Never'
+    const date = new Date(dateString)
+    return date.toISOString().replace('T', ' ').substring(0, 19)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'RUNNING':
+        return 'bg-blue-100 text-blue-800 border-blue-300'
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800 border-green-300'
+      case 'FAILED':
+        return 'bg-red-100 text-red-800 border-red-300'
+      case 'IDLE':
+        return 'bg-gray-100 text-gray-800 border-gray-300'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300'
+    }
+  }
+
+  const calculateProgress = (status: ProcessingStatus | null): number => {
+    if (!status?.current_source_file) return 0
+    
+    const file = status.current_source_file
+    const processed = file.processed_records || 0
+    const total = file.total_records || 0
+    
+    return total > 0 ? (processed / total) * 100 : 0
+  }
+
+  const getFrequencyLabel = (status: ProcessingStatus | null): string => {
+    if (!status) return ''
+    
+    // Check if next run is more than 24 hours away for full sync (weekly)
+    if (status.next_run_at && status.last_run_at) {
+      const nextRun = new Date(status.next_run_at)
+      const lastRun = new Date(status.last_run_at)
+      const hoursDiff = (nextRun.getTime() - lastRun.getTime()) / (1000 * 60 * 60)
+      
+      if (hoursDiff > 48) {
+        return 'Weekly'
+      } else if (hoursDiff > 2) {
+        return 'Daily'
+      } else {
+        return 'Hourly'
+      }
+    }
+    
+    return status.job_type === 'DAILY_FULL' ? 'Weekly' : 'Hourly'
+  }
+
+  const renderStatusCard = (title: string, status: ProcessingStatus | null) => {
+    if (!status) {
+      return (
+        <div className="bg-white/5 backdrop-blur-sm rounded-lg shadow-md p-6 border-2 border-white/10">
+          <h2 className="text-2xl font-bold mb-4">{title}</h2>
+          <p className="opacity-70">No status data available</p>
+        </div>
+      )
+    }
+
+    const progress = calculateProgress(status)
+    const file = status.current_source_file
+
+    return (
+      <div className="bg-white/5 backdrop-blur-sm rounded-lg shadow-md p-6 border-2 border-white/10">
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold">{title}</h2>
+          <span className={`px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(status.status)}`}>
+            {status.status}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        {file && status.status === 'RUNNING' && (
+          <div className="mb-6">
+            {file.total_records > 0 ? (
+              <>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Processing Progress</span>
+                  <span className="text-gray-600">
+                    {file.processed_records.toLocaleString()} / {file.total_records.toLocaleString()} records ({progress.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                  <div 
+                    className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(progress, 100)}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-gray-600">
+                <p className="mb-2">⏳ Downloading file... ({file.processed_records.toLocaleString()} records processed)</p>
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                  <div className="bg-blue-600 h-4 rounded-full animate-pulse" style={{ width: '30%' }} />
+                </div>
+              </div>
+            )}
+            {file.failed_records > 0 && (
+              <p className="text-sm text-orange-600 mt-2">
+                ⚠️ Failed records: {file.failed_records.toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Current File Information */}
+        {file && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold mb-2 text-sm text-gray-700">Current File</h3>
+            <div className="space-y-1 text-sm">
+              <p className="truncate"><span className="font-medium">Name:</span> {file.file_name}</p>
+              <p><span className="font-medium">Status:</span> {file.processing_status}</p>
+              {file.total_records > 0 && (
+                <p><span className="font-medium">Total Records:</span> {file.total_records.toLocaleString()}</p>
+              )}
+              <p><span className="font-medium">Processed:</span> {file.processed_records.toLocaleString()} records</p>
+              {file.last_processed_lei && (
+                <p className="truncate"><span className="font-medium">Last LEI:</span> {file.last_processed_lei}</p>
+              )}
+              {file.failure_category && (
+                <p className="text-red-600">
+                  <span className="font-medium">Error Category:</span> {file.failure_category}
+                </p>
+              )}
+              {file.processing_error && (
+                <p className="text-red-600 text-xs mt-2">
+                  <span className="font-medium">Error:</span> {file.processing_error}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Timestamps */}
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Last Run:</span>
+            <span className="font-medium">{formatDate(status.last_run_at)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Last Success:</span>
+            <span className="font-medium">{formatDate(status.last_success_at)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Next Run:</span>
+            <span className="font-medium">{formatDate(status.next_run_at)}</span>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {status.error_message && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">
+              <span className="font-semibold">Error:</span> {status.error_message}
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (loading && !fullStatus && !deltaStatus) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 opacity-70">Loading LEI processing status...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <Link href="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+              ← Back to Home
+            </Link>
+            <h1 className="text-4xl font-bold mb-2">LEI Data Processing</h1>
+            <p className="text-lg opacity-70">Real-time monitoring of GLEIF data synchronization</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <button
+              onClick={fetchStatus}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              🔄 Refresh Now
+            </button>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-sm opacity-70">Auto-refresh (5s)</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">
+              <span className="font-semibold">Connection Error:</span> {error}
+            </p>
+            <p className="text-sm text-red-600 mt-1">
+              Make sure the backend is running and you have proper authentication.
+            </p>
+          </div>
+        )}
+
+        {/* Status Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {renderStatusCard(`Full Sync (${getFrequencyLabel(fullStatus)})`, fullStatus)}
+          {renderStatusCard(`Delta Sync (${getFrequencyLabel(deltaStatus)})`, deltaStatus)}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-8 bg-white rounded-lg shadow-md p-4">
+          <h3 className="font-semibold mb-3 text-gray-700">Status Legend</h3>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('IDLE')}`}>IDLE</span>
+              <span className="text-gray-600">Waiting for next scheduled run</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('RUNNING')}`}>RUNNING</span>
+              <span className="text-gray-600">Currently processing data</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('COMPLETED')}`}>COMPLETED</span>
+              <span className="text-gray-600">Successfully finished</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('FAILED')}`}>FAILED</span>
+              <span className="text-gray-600">Encountered an error</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Note */}
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <p>Data source: GLEIF Golden Copy Files • Updated every 5 seconds when auto-refresh is enabled</p>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,606 @@
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
+import ThemeToggle from '../components/ThemeToggle'
+
+interface LEIRecord {
+  id: string
+  lei: string
+  legal_name: string
+  entity_status: string
+  legal_address_country: string
+  entity_category: string
+  registration_date: string
+  last_update_date: string
+}
+
+interface Country {
+  code: string
+  name: string
+  active: boolean
+}
+
+export default function LEIRecordsPage() {
+  const [records, setRecords] = useState<LEIRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+  const [countrySearch, setCountrySearch] = useState('')
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalRecords] = useState(3211232)
+  const [countryOptions, setCountryOptions] = useState<Country[]>([])
+  const [itemsPerPage, setItemsPerPage] = useState(50)
+  const [hasMorePages, setHasMorePages] = useState(false)
+  const [sortField, setSortField] = useState<keyof LEIRecord>('legal_name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [filterBarHeight, setFilterBarHeight] = useState(0)
+  const countryDropdownRef = useRef<HTMLDivElement>(null)
+  const filterBarRef = useRef<HTMLDivElement>(null)
+
+  const API_BASE_URL = typeof window !== 'undefined' 
+    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18080')
+    : 'http://backend:8080'
+
+  const statusOptions = ['ACTIVE', 'INACTIVE', 'LAPSED', 'MERGED', 'RETIRED', 'NULL']
+  const categoryOptions = ['GENERAL', 'FUND', 'BRANCH', 'SOLE_PROPRIETOR', 'INTERNATIONAL_BRANCH']
+
+  // Fetch countries list on mount
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/lei-countries`)
+        if (response.ok) {
+          const data: Country[] = await response.json()
+          // Sort by country name
+          const sortedCountries = (data || []).sort((a, b) => a.name.localeCompare(b.name))
+          setCountryOptions(sortedCountries)
+        }
+      } catch (err) {
+        console.error('Failed to fetch countries:', err)
+      }
+    }
+    fetchCountries()
+  }, [])
+
+  // Close country dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(event.target as Node)) {
+        setShowCountryDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Debounce search input (300ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setCurrentPage(1) // Reset to page 1 when search changes
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Fetch records when filters or page changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      fetchRecords()
+    }
+  }, [currentPage, debouncedSearch, statusFilter, categoryFilter, countryFilter, itemsPerPage, sortField, sortDirection])
+
+  const fetchRecords = async () => {
+    try {
+      setLoading(true)
+      const offset = (currentPage - 1) * itemsPerPage
+      
+      // Request one extra record to detect if there are more pages
+      const params = new URLSearchParams({
+        limit: (itemsPerPage + 1).toString(),
+        offset: offset.toString(),
+      })
+      
+      if (debouncedSearch) params.append('search', debouncedSearch)
+      if (statusFilter) params.append('status', statusFilter)
+      if (categoryFilter) params.append('category', categoryFilter)
+      if (countryFilter) params.append('country', countryFilter)
+      if (sortField) params.append('sortBy', sortField)
+      if (sortDirection) params.append('sortOrder', sortDirection)
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/lei?${params.toString()}`,
+        {
+          headers: {
+            'Accept': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        // If we got more than requested, there are more pages - only show the requested amount
+        const hasMorePages = data && data.length > itemsPerPage
+        const displayData = hasMorePages ? data.slice(0, itemsPerPage) : (data || [])
+        
+        setRecords(displayData)
+        setHasMorePages(hasMorePages)
+        
+        if (!displayData || displayData.length === 0) {
+          setError('No LEI data matches the selected filters.')
+        } else {
+          setError(null)
+        }
+      } else {
+        setError(`API returned ${response.status}: ${response.statusText}`)
+      }
+    } catch (err) {
+      console.error('LEI Records fetch error:', err)
+      setError('Unable to connect to backend API.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('')
+    setCategoryFilter('')
+    setCountryFilter('')
+    setCountrySearch('')
+    setCurrentPage(1)
+  }
+
+  const handleSort = (field: keyof LEIRecord) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1)
+  }
+
+  const totalPages = Math.ceil(totalRecords / itemsPerPage)
+  const hasActiveFilters = debouncedSearch || statusFilter || categoryFilter || countryFilter
+
+  // Measure filter bar height dynamically
+  useEffect(() => {
+    if (filterBarRef.current && hasActiveFilters) {
+      const height = filterBarRef.current.offsetHeight
+      setFilterBarHeight(height)
+    } else {
+      setFilterBarHeight(0)
+    }
+  }, [hasActiveFilters, debouncedSearch, statusFilter, categoryFilter, countryFilter])
+  const isLastPage = !hasMorePages
+
+  if (loading && records.length === 0) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 opacity-70">Loading LEI records...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <Link href="/" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-4 inline-block">
+              ← Back to Home
+            </Link>
+            <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">LEI Records</h1>
+            <p className="text-gray-600 dark:text-gray-400">GLEIF Legal Entity Identifiers (ISO 17442)</p>
+          </div>
+          <ThemeToggle />
+        </div>
+
+        {error && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            error.includes('No LEI data matches') 
+              ? 'bg-yellow-50 border-yellow-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={error.includes('No LEI data matches') ? 'text-yellow-800' : 'text-red-800'}>
+              <span className="font-semibold">
+                {error.includes('No LEI data matches') ? '📋 Notice:' : '⚠️ Error:'}
+              </span> {error}
+            </p>
+          </div>
+        )}
+
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Records</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalRecords.toLocaleString()}</p>
+          </div>
+          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Current Page</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {currentPage} {hasActiveFilters ? '(filtered)' : `of ${totalPages.toLocaleString()}`}
+            </p>
+          </div>
+          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Showing</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalRecords)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-6 bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Search</label>
+              <input
+                type="text"
+                placeholder="LEI code or legal name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-500 dark:border-white/20 dark:bg-white/5 dark:text-white dark:placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-gray-50 text-gray-900 dark:border-white/20 dark:bg-white/5 dark:text-white focus:border-blue-500 focus:outline-none"
+              >
+                <option value="" className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white">All Statuses</option>
+                {statusOptions.map(status => (
+                  <option key={status} value={status} className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white">
+                    {status === 'NULL' ? 'Not Set' : status}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Category</label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-gray-50 text-gray-900 dark:border-white/20 dark:bg-white/5 dark:text-white focus:border-blue-500 focus:outline-none"
+              >
+                <option value="" className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white">All Categories</option>
+                {categoryOptions.map(category => (
+                  <option key={category} value={category} className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white">{category}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Country</label>
+              <div className="relative" ref={countryDropdownRef}>
+                <input
+                  type="text"
+                  placeholder="Search countries..."
+                  value={countrySearch}
+                  onChange={(e) => {
+                    setCountrySearch(e.target.value)
+                    setShowCountryDropdown(true)
+                  }}
+                  onFocus={() => setShowCountryDropdown(true)}
+                  className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-500 dark:border-white/20 dark:bg-white/5 dark:text-white dark:placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                />
+                
+                {showCountryDropdown && (
+                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-white/20 rounded-lg shadow-lg">
+                    <button
+                      onClick={() => {
+                        setCountryFilter('')
+                        setCountrySearch('')
+                        setShowCountryDropdown(false)
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700"
+                    >
+                      All Countries
+                    </button>
+                    {countryOptions
+                      .filter(country => 
+                        countrySearch === '' ||
+                        country.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                        country.code.toLowerCase().includes(countrySearch.toLowerCase())
+                      )
+                      .map(country => (
+                        <button
+                          key={country.code}
+                          onClick={() => {
+                            setCountryFilter(country.code)
+                            setCountrySearch(`${country.code} - ${country.name}`)
+                            setShowCountryDropdown(false)
+                          }}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-sm ${
+                            countryFilter === country.code
+                              ? 'bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 font-medium'
+                              : 'text-gray-900 dark:text-white'
+                          }`}
+                        >
+                          <span className="font-mono font-semibold">{country.code}</span> - {country.name}
+                        </button>
+                      ))}
+                    {countryOptions.filter(country => 
+                      countrySearch === '' ||
+                      country.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                      country.code.toLowerCase().includes(countrySearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-4 py-2 text-gray-500 dark:text-gray-400 text-sm">
+                        No countries found
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {countryFilter && (
+                  <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    Filtered by: {countryOptions.find(c => c.code === countryFilter)?.name || countryFilter}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="px-6 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition-colors font-medium"
+              >
+                ✕ Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {records.length > 0 && (
+          <div className="mb-4 flex justify-between items-center">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              ← Previous
+            </button>
+            <span className="text-gray-700 dark:text-gray-300">
+              Page {currentPage} {hasActiveFilters ? `(filtered: ${records.length} results)` : `of ${totalPages.toLocaleString()}`}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={isLastPage}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              Next →
+            </button>
+          </div>
+        )}
+
+        {/* Sticky filter summary bar - shows when scrolling */}
+        {hasActiveFilters && (
+          <div ref={filterBarRef} className="sticky top-0 z-40 bg-blue-50 dark:bg-blue-900 border-b-2 border-blue-200 dark:border-blue-700 px-6 py-3 shadow-md rounded-t-lg">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3 flex-wrap text-sm">
+                <span className="font-medium text-blue-900 dark:text-blue-100">🔍 Active Filters:</span>
+                {debouncedSearch && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 rounded text-xs font-medium hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    Search: "{debouncedSearch}" <span className="ml-1">✕</span>
+                  </button>
+                )}
+                {statusFilter && (
+                  <button
+                    onClick={() => setStatusFilter('')}
+                    className="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 rounded text-xs font-medium hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    Status: {statusFilter === 'NULL' ? 'Not Set' : statusFilter} <span className="ml-1">✕</span>
+                  </button>
+                )}
+                {categoryFilter && (
+                  <button
+                    onClick={() => setCategoryFilter('')}
+                    className="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 rounded text-xs font-medium hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    Category: {categoryFilter} <span className="ml-1">✕</span>
+                  </button>
+                )}
+                {countryFilter && (
+                  <button
+                    onClick={() => setCountryFilter('')}
+                    className="px-2 py-1 bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 rounded text-xs font-medium hover:bg-blue-300 dark:hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    Country: {countryOptions.find(c => c.code === countryFilter)?.name || countryFilter} <span className="ml-1">✕</span>
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium"
+              >
+                ✕ Clear All
+              </button>
+            </div>
+          </div>
+        )}
+
+        {records.length > 0 ? (
+          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm shadow-lg" style={{ borderTopLeftRadius: hasActiveFilters ? 0 : undefined, borderTopRightRadius: hasActiveFilters ? 0 : undefined, borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}>
+            <table className="w-full table-auto">
+              <thead className="sticky z-30 bg-gray-100 dark:bg-gray-800" style={{ top: hasActiveFilters ? `${filterBarHeight}px` : '0px' }}>
+                <tr>
+                    <th 
+                      onClick={() => handleSort('lei')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        LEI
+                        {sortField === 'lei' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('legal_name')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Legal Name
+                        {sortField === 'legal_name' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('legal_address_country')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Country
+                        {sortField === 'legal_address_country' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('entity_status')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Status
+                        {sortField === 'entity_status' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('entity_category')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Category
+                        {sortField === 'entity_category' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('last_update_date')}
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        Last Updated
+                        {sortField === 'last_update_date' && (
+                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-white/10">
+                  {records.map((record) => (
+                    <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {record.lei}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                        {record.legal_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {record.legal_address_country || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded ${
+                          record.entity_status === 'ACTIVE' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                            : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                        }`}>
+                          {record.entity_status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {record.entity_category || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                        {record.last_update_date && !record.last_update_date.startsWith('0001-') 
+                          ? new Date(record.last_update_date).toISOString().split('T')[0] 
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          </div>
+          ) : (
+            <div className="text-center py-12 bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg">
+              <p className="text-xl text-gray-600 dark:text-gray-400">No records found with current filters</p>
+            </div>
+          )}
+
+        {records.length > 0 && (
+          <div className="mt-4 flex justify-between items-center flex-wrap gap-4">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              ← Previous
+            </button>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-700 dark:text-gray-300">
+                Page {currentPage} {hasActiveFilters && `(showing ${records.length} results)`}
+              </span>
+              <div className="flex items-center gap-2">
+                <label htmlFor="items-per-page" className="text-sm text-gray-700 dark:text-gray-300">Items per page:</label>
+                <select
+                  id="items-per-page"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value))
+                    setCurrentPage(1)
+                  }}
+                  className="px-3 py-1 rounded-lg bg-white border-2 border-gray-200 dark:bg-gray-800 dark:border-white/10 text-gray-900 dark:text-white text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="250">250</option>
+                  <option value="500">500</option>
+                </select>
+              </div>
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={isLastPage}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white"
+            >
+              Next →
+            </button>
+          </div>
+        )}
+
+        <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>Data source: GLEIF Golden Copy Files • Updated via scheduled sync jobs</p>
+          <p className="mt-2">
+            Total database contains {totalRecords.toLocaleString()} LEI records • 
+            <Link href="/lei" className="ml-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline">
+              View sync status
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

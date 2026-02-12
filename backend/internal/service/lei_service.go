@@ -87,7 +87,9 @@ type LEIService interface {
 	GetLEIByCode(lei string) (*domain.LEIRecord, error)
 	GetLEIByID(id string) (*domain.LEIRecord, error)
 	GetAllLEI(limit, offset int) ([]*domain.LEIRecord, error)
+	GetAllLEIWithFilters(limit, offset int, search, status, category, country, sortBy, sortOrder string) ([]*domain.LEIRecord, error)
 	CountLEIRecords() (int64, error)
+	GetDistinctCountries() ([]domain.Country, error)
 	UpdateLEIRecord(record *domain.LEIRecord) error
 
 	// Audit and history
@@ -102,15 +104,17 @@ type LEIService interface {
 }
 
 type leiService struct {
-	repo    repository.LEIRepository
-	dataDir string // Directory to store downloaded files
+	repo        repository.LEIRepository
+	countryRepo repository.CountryRepository
+	dataDir     string // Directory to store downloaded files
 }
 
 // NewLEIService creates a new LEI service
-func NewLEIService(repo repository.LEIRepository, dataDir string) LEIService {
+func NewLEIService(repo repository.LEIRepository, countryRepo repository.CountryRepository, dataDir string) LEIService {
 	return &leiService{
-		repo:    repo,
-		dataDir: dataDir,
+		repo:        repo,
+		countryRepo: countryRepo,
+		dataDir:     dataDir,
 	}
 }
 
@@ -895,9 +899,33 @@ func (s *leiService) GetAllLEI(limit, offset int) ([]*domain.LEIRecord, error) {
 	return s.repo.FindAllLEI(limit, offset)
 }
 
+// GetAllLEIWithFilters retrieves LEI records with search and filters
+func (s *leiService) GetAllLEIWithFilters(limit, offset int, search, status, category, country, sortBy, sortOrder string) ([]*domain.LEIRecord, error) {
+	return s.repo.FindAllLEIWithFilters(limit, offset, search, status, category, country, sortBy, sortOrder)
+}
+
 // CountLEIRecords returns the total count of LEI records
 func (s *leiService) CountLEIRecords() (int64, error) {
 	return s.repo.CountLEIRecords()
+}
+
+// GetDistinctCountries returns a sorted list of active countries from the countries reference table
+func (s *leiService) GetDistinctCountries() ([]domain.Country, error) {
+	// Fetch all countries from master data table (more efficient than DISTINCT on LEI records)
+	countries, err := s.countryRepo.FindAll(1000, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter to active countries only
+	activeCountries := make([]domain.Country, 0, len(countries))
+	for _, country := range countries {
+		if country.Active {
+			activeCountries = append(activeCountries, *country)
+		}
+	}
+
+	return activeCountries, nil
 }
 
 // UpdateLEIRecord updates an LEI record

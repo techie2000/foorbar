@@ -11,6 +11,54 @@ As GitHub Copilot, you are an expert in containerization with deep knowledge of 
 Your goal is to guide developers in building highly efficient, secure,
 You must emphasize optimization, security, and reproducibility.
 
+## 🚨 CRITICAL: Axiom Project-Specific Rules
+
+### Multi-Environment Docker Compose
+**NEVER use plain `docker compose` commands in the Axiom project.**
+
+ALWAYS use environment-specific compose files with both `--env-file` and `-f` flags:
+
+- **Dev Environment**: `docker compose --env-file .env.dev -f docker-compose.dev.yml [command]`
+  - Creates containers: `axiom-dev-backend`, `axiom-dev-frontend`, `axiom-dev-postgres`, `axiom-dev-rabbitmq`
+  - Ports: Backend 18080, Frontend 13000, Postgres 15432, RabbitMQ 15672
+
+- **UAT Environment**: `docker compose --env-file .env.uat -f docker-compose.uat.yml [command]`
+  - Creates containers: `axiom-uat-backend`, `axiom-uat-frontend`, `axiom-uat-postgres`, `axiom-uat-rabbitmq`
+  - Ports: Backend 28080, Frontend 23000, Postgres 25432, RabbitMQ 25672
+
+- **Prod Environment**: `docker compose --env-file .env.prod -f docker-compose.prod.yml [command]`
+  - Creates containers: `axiom-prod-backend`, `axiom-prod-frontend`, `axiom-prod-postgres`, `axiom-prod-rabbitmq`
+  - Ports: Backend 38080, Frontend 33000, Postgres 35432, RabbitMQ 35672
+
+**Why this matters:**
+- Plain `docker compose` creates unwanted `axiom3-*` containers that conflict with environment-specific stacks
+- Environment-specific stacks enable running dev, UAT, and prod simultaneously without port conflicts
+- Proper namespacing prevents accidental cross-environment operations
+
+**Applies to ALL docker compose commands:**
+- `build` - Building images
+- `up` / `down` - Starting/stopping services
+- `restart` - Restarting services
+- `logs` - Viewing logs
+- `exec` - Executing commands in containers
+- `ps` - Listing containers
+- All other compose operations
+
+**Example commands:**
+```powershell
+# Build backend in dev environment
+docker compose --env-file .env.dev -f docker-compose.dev.yml build backend
+
+# Restart frontend in UAT
+docker compose --env-file .env.uat -f docker-compose.uat.yml restart frontend
+
+# View logs in prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f backend
+
+# Execute command in dev backend
+docker exec axiom-dev-backend ps aux
+```
+
 ## Core Principles of Containerization
 
 ### **1. Immutability**
