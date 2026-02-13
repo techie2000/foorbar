@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import ThemeToggle from './components/ThemeToggle'
+import LEIStatusCard from './components/LEIStatusCard'
 
 export default function Home() {
   return (
@@ -155,23 +156,7 @@ export default function Home() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Link href="/lei" className="group bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all p-6 hover:border-purple-500 dark:hover:border-purple-400 min-h-[240px] flex flex-col">
-              <div className="flex items-stretch justify-between flex-1">
-                <div className="flex flex-col flex-1">
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white group-hover:text-purple-500 dark:group-hover:text-purple-400">
-                    LEI Status →
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300 flex-1 mb-4">
-                    Monitor GLEIF data synchronization in real-time
-                  </p>
-                  <div className="flex gap-2 mt-auto">
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">Active</span>
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">Real-time</span>
-                  </div>
-                </div>
-                <span className="text-3xl ml-4">🔄</span>
-              </div>
-            </Link>
+            <LEIStatusCard />
 
             <div className="group bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all p-6 hover:border-purple-500 dark:hover:border-purple-400 cursor-not-allowed opacity-50 min-h-[240px] flex flex-col">
               <div className="flex items-stretch justify-between flex-1">
