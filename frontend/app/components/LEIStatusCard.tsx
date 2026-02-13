@@ -10,6 +10,9 @@ interface LEIStatus {
   processed_records?: number
   failed_records?: number
   error_message?: string
+  current_source_file?: {
+    total_records?: number
+  }
 }
 
 export default function LEIStatusCard() {
@@ -53,9 +56,9 @@ export default function LEIStatusCard() {
     
     switch (status.status) {
       case 'RUNNING':
-        return { color: 'bg-blue-500 animate-pulse', label: 'Processing', icon: '🔄' }
+        return { color: 'bg-blue-500 animate-pulse', label: 'Running', icon: '🔄' }
       case 'COMPLETED':
-        return { color: 'bg-green-500', label: 'Healthy', icon: '✅' }
+        return { color: 'bg-green-500', label: 'Completed', icon: '✅' }
       case 'FAILED':
         return { color: 'bg-red-500', label: 'Failed', icon: '❌' }
       case 'IDLE':
@@ -63,20 +66,6 @@ export default function LEIStatusCard() {
       default:
         return { color: 'bg-gray-400', label: status.status, icon: '❓' }
     }
-  }
-
-  const getPrimaryHealth = () => {
-    // Prioritize FAILED > RUNNING > IDLE > COMPLETED
-    if (fullStatus?.status === 'FAILED' || deltaStatus?.status === 'FAILED') {
-      return getHealthIndicator(fullStatus?.status === 'FAILED' ? fullStatus : deltaStatus)
-    }
-    if (fullStatus?.status === 'RUNNING' || deltaStatus?.status === 'RUNNING') {
-      return getHealthIndicator(fullStatus?.status === 'RUNNING' ? fullStatus : deltaStatus)
-    }
-    if (fullStatus?.status === 'IDLE' || deltaStatus?.status === 'IDLE') {
-      return getHealthIndicator(fullStatus?.status === 'IDLE' ? fullStatus : deltaStatus)
-    }
-    return getHealthIndicator(fullStatus || deltaStatus || null)
   }
 
   const formatNumber = (num?: number) => {
@@ -89,8 +78,17 @@ export default function LEIStatusCard() {
     return Math.min(100, (status.processed_records / status.total_records) * 100)
   }
 
-  const health = getPrimaryHealth()
-  const totalRecords = fullStatus?.total_records || 0
+  const getOverallStatus = () => {
+    // Prioritize FAILED > RUNNING > IDLE > COMPLETED
+    if (fullStatus?.status === 'FAILED' || deltaStatus?.status === 'FAILED') return 'Failed'
+    if (fullStatus?.status === 'RUNNING' || deltaStatus?.status === 'RUNNING') return 'Running'
+    if (fullStatus?.status === 'IDLE' || deltaStatus?.status === 'IDLE') return 'Idle'
+    return 'Completed'
+  }
+
+  const fullHealth = getHealthIndicator(fullStatus)
+  const deltaHealth = getHealthIndicator(deltaStatus)
+  const totalRecords = fullStatus?.current_source_file?.total_records || 0
 
   return (
     <Link href="/lei" className="group bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all p-6 hover:border-purple-500 dark:hover:border-purple-400 min-h-[240px] flex flex-col">
@@ -101,9 +99,15 @@ export default function LEIStatusCard() {
               LEI Status →
             </h3>
             {!loading && (
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${health.color}`} title={health.label}></div>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{health.icon}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1" title={`Full Sync: ${fullHealth.label}`}>
+                  <div className={`w-3 h-3 rounded-full ${fullHealth.color}`}></div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Full</span>
+                </div>
+                <div className="flex items-center gap-1" title={`Delta Sync: ${deltaHealth.label}`}>
+                  <div className={`w-3 h-3 rounded-full ${deltaHealth.color}`}></div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Delta</span>
+                </div>
               </div>
             )}
           </div>
@@ -148,7 +152,7 @@ export default function LEIStatusCard() {
 
           <div className="flex gap-2 mt-auto">
             <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">
-              {health.label}
+              {getOverallStatus()}
             </span>
             <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">Real-time</span>
           </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import ThemeToggle from './components/ThemeToggle'
 import LEIStatusCard from './components/LEIStatusCard'
+import LEIRecordsCard from './components/LEIRecordsCard'
 
 export default function Home() {
   return (
@@ -63,23 +64,7 @@ export default function Home() {
               </div>
             </Link>
 
-            <Link href="/lei-records" className="group bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all p-6 hover:border-green-500 dark:hover:border-green-400 min-h-[240px] flex flex-col">
-              <div className="flex items-stretch justify-between flex-1">
-                <div className="flex flex-col flex-1">
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white group-hover:text-green-500 dark:group-hover:text-green-400">
-                    LEI Records →
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300 flex-1 mb-4">
-                    Browse GLEIF Legal Entity Identifiers
-                  </p>
-                  <div className="flex gap-2 mt-auto">
-                    <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs rounded">ISO 17442</span>
-                    <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs rounded">Public</span>
-                  </div>
-                </div>
-                <span className="text-3xl ml-4">🏛️</span>
-              </div>
-            </Link>
+            <LEIRecordsCard />
           </div>
         </section>
 
