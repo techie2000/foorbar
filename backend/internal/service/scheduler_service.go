@@ -325,16 +325,15 @@ func (s *schedulerService) dailyDeltaSyncLoop() {
 					jobType = "DAILY_DELTA"
 				}
 
-				// Update job status to RUNNING when retrying
+				// Update job status to RUNNING when resuming file processing
 				if jobStatus, err := s.leiService.GetProcessingStatus(jobType); err == nil {
-					if jobStatus.Status == "FAILED" {
-						jobStatus.Status = "RUNNING"
-						now := time.Now()
-						jobStatus.LastRunAt = &now
-						jobStatus.CurrentSourceFileID = &file.ID
-						s.leiService.UpdateProcessingStatus(jobStatus)
-						log.Info().Str("job_type", jobType).Msg("Updated job status to RUNNING for retry")
-					}
+					jobStatus.Status = "RUNNING"
+					jobStatus.ErrorMessage = "" // Clear any previous error
+					now := time.Now()
+					jobStatus.LastRunAt = &now
+					jobStatus.CurrentSourceFileID = &file.ID
+					s.leiService.UpdateProcessingStatus(jobStatus)
+					log.Info().Str("job_type", jobType).Str("previous_status", jobStatus.Status).Msg("Updated job status to RUNNING for file resume")
 				}
 
 				// FIX: Use checkpoint resume regardless of status (PENDING or IN_PROGRESS)
@@ -484,6 +483,18 @@ func (s *schedulerService) RunDailyDeltaSync() error {
 	// Download delta file
 	sourceFile, err := s.leiService.DownloadDeltaFile()
 	if err != nil {
+		// Check if this is a duplicate file (already processed)
+		if strings.Contains(err.Error(), "duplicate file already processed") {
+			// This is success - no new data to process
+			log.Info().Msg("No new delta file available (duplicate hash detected)")
+			status.Status = "COMPLETED"
+			status.LastSuccessAt = &now
+			status.NextRunAt = calculateNextRun(1 * time.Hour)
+			status.ErrorMessage = ""
+			s.leiService.UpdateProcessingStatus(status)
+			return nil
+		}
+		// Real error
 		status.Status = "FAILED"
 		status.ErrorMessage = err.Error()
 		s.leiService.UpdateProcessingStatus(status)
@@ -554,6 +565,18 @@ func (s *schedulerService) RunDailyFullSync() error {
 	// Download full file
 	sourceFile, err := s.leiService.DownloadFullFile()
 	if err != nil {
+		// Check if this is a duplicate file (already processed)
+		if strings.Contains(err.Error(), "duplicate file already processed") {
+			// This is success - no new data to process
+			log.Info().Msg("No new full file available (duplicate hash detected)")
+			status.Status = "COMPLETED"
+			status.LastSuccessAt = &now
+			status.NextRunAt = calculateNextWeeklyRun()
+			status.ErrorMessage = ""
+			s.leiService.UpdateProcessingStatus(status)
+			return nil
+		}
+		// Real error
 		status.Status = "FAILED"
 		status.ErrorMessage = err.Error()
 		s.leiService.UpdateProcessingStatus(status)

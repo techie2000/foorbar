@@ -234,6 +234,23 @@ func (s *leiService) downloadFile(url, fileType, publishedAt string) (*domain.So
 		Str("hash", fileHash).
 		Msg("File downloaded successfully")
 
+	// Check if we already have a completed file with this hash
+	existingFile, err := s.repo.FindSourceFileByHash(fileHash)
+	if err != nil {
+		log.Error().Err(err).Str("hash", fileHash).Msg("Failed to check for duplicate file")
+		// Continue anyway - better to process duplicate than fail
+	} else if existingFile != nil {
+		// Duplicate found - delete newly downloaded file and skip
+		os.Remove(filePath)
+		log.Info().
+			Str("hash", fileHash).
+			Str("existing_file", existingFile.FileName).
+			Str("existing_id", existingFile.ID.String()).
+			Time("existing_completed", *existingFile.ProcessingCompletedAt).
+			Msg("Skipping duplicate file - already processed successfully")
+		return nil, fmt.Errorf("duplicate file already processed: %s", existingFile.FileName)
+	}
+
 	// Parse publication date
 	var publicationDate time.Time
 	if publishedAt != "" {
@@ -298,6 +315,11 @@ func (s *leiService) ProcessSourceFileWithResume(sourceFileID uuid.UUID, resumeF
 	jsonPath := filePath + ".extracted.json"
 	if _, err := os.Stat(jsonPath); os.IsNotExist(err) {
 		// Extracted file doesn't exist, try to extract from zip
+		log.Info().
+			Str("source_file_id", sourceFileID.String()).
+			Str("file_path", filePath).
+			Msg("Extracted file not found, starting extraction from ZIP")
+
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			sourceFile.ProcessingStatus = "FAILED"
 			sourceFile.ProcessingError = fmt.Sprintf("source file not found: %s", filePath)
@@ -403,11 +425,28 @@ func (s *leiService) extractZipFile(zipPath string) (string, error) {
 			}
 			defer outFile.Close()
 
-			// Copy content
-			_, err = io.Copy(outFile, rc)
+			// Log extraction start
+			uncompressedSize := f.UncompressedSize64
+			log.Info().
+				Str("file", f.Name).
+				Uint64("size_bytes", uncompressedSize).
+				Float64("size_mb", float64(uncompressedSize)/(1024*1024)).
+				Msg("Starting file extraction from ZIP")
+
+			// Copy content with progress tracking
+			startTime := time.Now()
+			written, err := io.Copy(outFile, rc)
 			if err != nil {
 				return "", err
 			}
+			elapsed := time.Since(startTime).Seconds()
+
+			log.Info().
+				Int64("bytes_written", written).
+				Float64("mb_written", float64(written)/(1024*1024)).
+				Float64("duration_seconds", elapsed).
+				Float64("mb_per_second", float64(written)/(1024*1024)/elapsed).
+				Msg("File extraction completed")
 
 			return jsonPath, nil
 		}
@@ -439,6 +478,20 @@ func (s *leiService) UpdateSourceFile(file *domain.SourceFile) error {
 // processJSONFile parses and processes the LEI JSON file
 // GLEIF JSON format: {"records": [ {...}, {...}, ... ]}
 func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceFile, resumeFromLEI string) error {
+	// Get file size for progress tracking
+	fileInfo, err := os.Stat(jsonPath)
+	if err != nil {
+		return err
+	}
+	fileSize := fileInfo.Size()
+
+	log.Info().
+		Str("file", jsonPath).
+		Int64("size_bytes", fileSize).
+		Float64("size_mb", float64(fileSize)/(1024*1024)).
+		Str("source_file_id", sourceFile.ID.String()).
+		Msg("Starting JSON file parsing")
+
 	file, err := os.Open(jsonPath)
 	if err != nil {
 		return err
@@ -457,6 +510,10 @@ func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceF
 		return fmt.Errorf("expected '{', got %v", token)
 	}
 
+	log.Info().
+		Str("source_file_id", sourceFile.ID.String()).
+		Msg("JSON structure validated, searching for records array")
+
 	// Read until we find the "records" key
 	for decoder.More() {
 		token, err := decoder.Token()
@@ -465,6 +522,9 @@ func (s *leiService) processJSONFile(jsonPath string, sourceFile *domain.SourceF
 		}
 
 		if key, ok := token.(string); ok && key == "records" {
+			log.Info().
+				Str("source_file_id", sourceFile.ID.String()).
+				Msg("Found records array, starting record processing")
 			// Found the records array, start processing
 			return s.processRecordsArray(decoder, sourceFile, resumeFromLEI)
 		}
@@ -498,18 +558,39 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 		return fmt.Errorf("expected '[', got %v", token)
 	}
 
-	// Start counters from current state (important for resume!)
-	var totalRecords int = sourceFile.TotalRecords
-	var processedRecords int = sourceFile.ProcessedRecords
-	var failedRecords int = sourceFile.FailedRecords
+	// Start counters based on whether we're resuming or starting fresh
+	var totalRecords int
+	var processedRecords int
+	var failedRecords int
 	var shouldProcess bool = (resumeFromLEI == "")
 	var lastProcessedLEI string
 
+	// Track checkpoint value separately from session progress
+	var checkpointProcessed int = 0
+
+	// Only load existing progress if resuming an interrupted file
+	// If starting fresh, reset all counters to avoid accumulation on reprocessing
+	if resumeFromLEI != "" {
+		// Resuming: initialize totalRecords at checkpoint to account for skipped records
+		// processedRecords tracks only NEW records processed in this session
+		checkpointProcessed = sourceFile.ProcessedRecords
+		totalRecords = sourceFile.ProcessedRecords // Start counting from checkpoint
+		processedRecords = 0                       // Track only new records in this session
+		failedRecords = sourceFile.FailedRecords
+	} else {
+		// Starting fresh: reset all counters
+		totalRecords = 0
+		processedRecords = 0
+		failedRecords = 0
+	}
+
 	log.Info().
 		Int("starting_total", totalRecords).
-		Int("starting_processed", processedRecords).
+		Int("checkpoint_processed", checkpointProcessed).
+		Int("session_processed", processedRecords).
 		Int("starting_failed", failedRecords).
 		Str("resume_from", resumeFromLEI).
+		Bool("is_resume", resumeFromLEI != "").
 		Msg("Starting array processing with counters")
 
 	// Start heartbeat ticker for progress monitoring (every 15 seconds)
@@ -525,7 +606,8 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			recordsSinceLastHeartbeat := processedRecords - lastHeartbeatProcessed
 			rate := float64(recordsSinceLastHeartbeat) / elapsed
 
-			remainingRecords := totalRecords - processedRecords
+			cumulativeProcessed := checkpointProcessed + processedRecords
+			remainingRecords := totalRecords - cumulativeProcessed
 			etaSeconds := 0.0
 			if rate > 0 {
 				etaSeconds = float64(remainingRecords) / rate
@@ -533,12 +615,14 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 
 			percentComplete := 0.0
 			if totalRecords > 0 {
-				percentComplete = (float64(processedRecords) / float64(totalRecords)) * 100
+				percentComplete = (float64(cumulativeProcessed) / float64(totalRecords)) * 100
 			}
 
 			log.Info().
 				Int("total_records", totalRecords).
-				Int("processed_records", processedRecords).
+				Int("checkpoint_processed", checkpointProcessed).
+				Int("session_processed", processedRecords).
+				Int("cumulative_processed", cumulativeProcessed).
 				Int("failed_records", failedRecords).
 				Float64("percent_complete", percentComplete).
 				Float64("records_per_sec", rate).
@@ -561,14 +645,17 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 		}
 
 		// Calculate progress for flush message
+		cumulativeProcessed := checkpointProcessed + processedRecords
 		flushPercent := 0.0
 		if totalRecords > 0 {
-			flushPercent = (float64(processedRecords) / float64(totalRecords)) * 100
+			flushPercent = (float64(cumulativeProcessed) / float64(totalRecords)) * 100
 		}
 
 		log.Info().
 			Int("batch_size", len(batch)).
-			Int("current_processed", processedRecords).
+			Int("checkpoint_processed", checkpointProcessed).
+			Int("session_processed", processedRecords).
+			Int("cumulative_processed", cumulativeProcessed).
 			Int("total_records", totalRecords).
 			Float64("percent_complete", flushPercent).
 			Str("last_lei", lastProcessedLEI).
@@ -586,11 +673,13 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			// Return error to stop processing
 			return fmt.Errorf("batch upsert failed: %w", err)
 		} else {
-			processedRecords += created + updated
+			// Track records processed in this session (use batch size, not DB results)
+			processedRecords += len(batch)
 
-			// Update progress after each batch
+			// Update source file with cumulative progress
+			cumulativeProcessed = checkpointProcessed + processedRecords
 			sourceFile.TotalRecords = totalRecords
-			sourceFile.ProcessedRecords = processedRecords
+			sourceFile.ProcessedRecords = cumulativeProcessed
 			sourceFile.FailedRecords = failedRecords
 			sourceFile.LastProcessedLEI = lastProcessedLEI
 			if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
@@ -600,12 +689,13 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			// Calculate progress percentage
 			percentComplete := 0.0
 			if totalRecords > 0 {
-				percentComplete = (float64(processedRecords) / float64(totalRecords)) * 100
+				percentComplete = (float64(cumulativeProcessed) / float64(totalRecords)) * 100
 			}
 
 			log.Info().
 				Int("total_scanned", totalRecords).
-				Int("processed", processedRecords).
+				Int("cumulative_processed", cumulativeProcessed).
+				Int("session_processed", processedRecords).
 				Int("created", created).
 				Int("updated", updated).
 				Int("failed", failedRecords).
@@ -633,24 +723,26 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 			continue
 		}
 
-		// FIX: Only increment totalRecords when processing from beginning (not resuming)
-		// When resuming, totalRecords already reflects the full file count from previous attempt
-		if resumeFromLEI == "" {
-			totalRecords++
-		}
-
 		// Check if we should start processing (resume logic)
 		if !shouldProcess {
 			lei := s.extractLEI(&jsonRecord)
 			if lei == resumeFromLEI {
 				shouldProcess = true
+				log.Info().
+					Str("resume_lei", resumeFromLEI).
+					Int("records_scanned_to_resume", recordCount).
+					Msg("Found resume checkpoint, starting processing from next record")
 				// Skip the checkpoint record itself (already processed)
 				continue
 			} else {
-				// Scanning to find resume point - skip but don't increment total
+				// Scanning to find resume point - skip record
+				// Don't increment totalRecords during skip phase (already counted in checkpoint)
 				continue
 			}
 		}
+
+		// Count records only after we start processing (or if not resuming)
+		totalRecords++
 
 		// Convert JSON record to domain model
 		record := s.jsonToDomainRecord(&jsonRecord, sourceFile.ID)
@@ -673,16 +765,19 @@ func (s *leiService) processRecordsArray(decoder *json.Decoder, sourceFile *doma
 	}
 
 	// Final update
+	cumulativeProcessed := checkpointProcessed + processedRecords
 	sourceFile.TotalRecords = totalRecords
-	sourceFile.ProcessedRecords = processedRecords
+	sourceFile.ProcessedRecords = cumulativeProcessed
 	sourceFile.FailedRecords = failedRecords
 	if err := s.repo.UpdateSourceFile(sourceFile); err != nil {
 		log.Error().Err(err).Msg("Failed to update final source file status")
 	}
 
 	log.Info().
-		Int("total_scanned", totalRecords).
-		Int("total_processed", processedRecords).
+		Int("total_records", totalRecords).
+		Int("checkpoint_processed", checkpointProcessed).
+		Int("session_processed", processedRecords).
+		Int("cumulative_processed", cumulativeProcessed).
 		Int("total_failed", failedRecords).
 		Msg("File processing completed")
 

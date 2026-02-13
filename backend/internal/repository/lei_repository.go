@@ -31,6 +31,7 @@ type LEIRepository interface {
 	// Source File operations
 	CreateSourceFile(file *domain.SourceFile) error
 	FindSourceFileByID(id string) (*domain.SourceFile, error)
+	FindSourceFileByHash(hash string) (*domain.SourceFile, error)
 	FindLatestSourceFile(fileType string) (*domain.SourceFile, error)
 	UpdateSourceFile(file *domain.SourceFile) error
 	FindPendingSourceFiles() ([]*domain.SourceFile, error)
@@ -279,18 +280,18 @@ func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int,
 		leiCodes[i] = record.LEI
 	}
 
-	// Identify existing records to determine creates vs updates
-	var existingLEIs []string
+	// Fetch full existing records to detect changes (not just LEI codes)
+	var existingRecords []domain.LEIRecord
 	if err := r.db.Model(&domain.LEIRecord{}).
 		Where("lei IN ?", leiCodes).
-		Pluck("lei", &existingLEIs).Error; err != nil {
+		Find(&existingRecords).Error; err != nil {
 		return 0, 0, fmt.Errorf("failed to query existing records: %w", err)
 	}
 
-	// Build set of existing LEIs for fast lookup
-	existingSet := make(map[string]bool)
-	for _, lei := range existingLEIs {
-		existingSet[lei] = true
+	// Build map of existing records for fast lookup and change detection
+	existingMap := make(map[string]*domain.LEIRecord)
+	for i := range existingRecords {
+		existingMap[existingRecords[i].LEI] = &existingRecords[i]
 	}
 
 	// Use transaction for atomicity: record + audit must succeed together
@@ -470,26 +471,48 @@ func (r *leiRepository) BatchUpsertLEIRecords(records []*domain.LEIRecord) (int,
 				return 0, 0, fmt.Errorf("failed to get ID for LEI %s after upsert", record.LEI)
 			}
 
-			// Determine if this was a create or update
-			action := "CREATE"
-			wasExisting := existingSet[record.LEI]
-			if wasExisting {
-				action = "UPDATE"
-				updatedCount++
-			} else {
-				createdCount++
-			}
+			// Check if this record existed before
+			existingRecord, wasExisting := existingMap[record.LEI]
 
-			// Create audit record with full snapshot
-			auditRecords = append(auditRecords, domain.LEIRecordAudit{
-				LEIRecordID:    recordID,
-				LEI:            record.LEI,
-				Action:         action,
-				RecordSnapshot: r.recordToJSON(record),
-				ChangedFields:  "{}",
-				SourceFileID:   record.SourceFileID,
-				ChangedBy:      "system",
-			})
+			if !wasExisting {
+				// New record - always create audit entry
+				createdCount++
+				auditRecords = append(auditRecords, domain.LEIRecordAudit{
+					LEIRecordID:    recordID,
+					LEI:            record.LEI,
+					Action:         "CREATE",
+					RecordSnapshot: r.recordToJSON(record),
+					ChangedFields:  "{}",
+					SourceFileID:   record.SourceFileID,
+					ChangedBy:      "system",
+				})
+			} else {
+				// Existing record - detect changes
+				changes := r.detectChanges(existingRecord, record)
+
+				// Only create audit record if something actually changed
+				if len(changes) > 0 {
+					updatedCount++
+
+					// Convert changes to JSON
+					changesJSON, err := json.Marshal(changes)
+					if err != nil {
+						tx.Rollback()
+						return 0, 0, fmt.Errorf("failed to marshal changes: %w", err)
+					}
+
+					auditRecords = append(auditRecords, domain.LEIRecordAudit{
+						LEIRecordID:    recordID,
+						LEI:            record.LEI,
+						Action:         "UPDATE",
+						RecordSnapshot: r.recordToJSON(record),
+						ChangedFields:  string(changesJSON),
+						SourceFileID:   record.SourceFileID,
+						ChangedBy:      "system",
+					})
+				}
+				// If no changes, don't create audit record or increment updatedCount
+			}
 		}
 
 		// Batch insert audit records (100 at a time)
@@ -568,6 +591,18 @@ func (r *leiRepository) CreateSourceFile(file *domain.SourceFile) error {
 func (r *leiRepository) FindSourceFileByID(id string) (*domain.SourceFile, error) {
 	var file domain.SourceFile
 	if err := r.db.First(&file, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+// FindSourceFileByHash finds a completed source file by hash
+func (r *leiRepository) FindSourceFileByHash(hash string) (*domain.SourceFile, error) {
+	var file domain.SourceFile
+	if err := r.db.Where("file_hash = ? AND processing_status = ?", hash, "COMPLETED").First(&file).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &file, nil
