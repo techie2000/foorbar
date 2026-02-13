@@ -700,7 +700,7 @@ export default function LEIRecordsPage() {
                       data-lei={record.lei}
                       data-row-index={index}
                       onClick={() => setSelectedRecord(record)}
-                      className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                      className="hover:bg-blue-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                       style={{ height: 'auto', minHeight: '48px' }}
                     >
                       {AVAILABLE_COLUMNS.filter(col => visibleColumns.has(col.key)).map((column) => {
