@@ -893,13 +893,13 @@ export default function LEIRecordsPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-6">
+            <div className="bg-white dark:bg-gray-900 pb-6">
               {/* Core Information */}
-              <section>
+              <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                   Core Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Legal Name</label>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">{selectedRecord.legal_name}</p>
@@ -942,11 +942,11 @@ export default function LEIRecordsPage() {
               </section>
 
               {/* Legal Address */}
-              <section>
+              <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                   Legal Address
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
                   {selectedRecord.legal_address_line_1 && (
                     <div className="md:col-span-2">
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
@@ -979,11 +979,11 @@ export default function LEIRecordsPage() {
 
               {/* HQ Address (if different) */}
               {(selectedRecord.hq_address_city || selectedRecord.hq_address_country) && (
-                <section>
+                <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                     Headquarters Address
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
                     {selectedRecord.hq_address_line_1 && (
                       <div className="md:col-span-2">
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
@@ -1016,11 +1016,11 @@ export default function LEIRecordsPage() {
               )}
 
               {/* Registration Information */}
-              <section>
+              <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                   Registration Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Registration Authority</label>
                     <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.registration_authority || '-'}</p>
@@ -1073,11 +1073,11 @@ export default function LEIRecordsPage() {
 
               {/* Associated Entities */}
               {(selectedRecord.managing_lou || selectedRecord.successor_lei) && (
-                <section>
+                <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                     Associated Entities
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
                     {selectedRecord.managing_lou && (
                       <div>
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Managing LOU</label>
@@ -1102,11 +1102,11 @@ export default function LEIRecordsPage() {
 
               {/* Validation */}
               {selectedRecord.validation_authority && (
-                <section>
+                <section className="bg-white dark:bg-gray-900 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
                     Validation
                   </h3>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-4 bg-white dark:bg-gray-900">
                     <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Validation Authority</label>
                       <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.validation_authority}</p>
