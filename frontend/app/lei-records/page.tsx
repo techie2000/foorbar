@@ -8,11 +8,51 @@ interface LEIRecord {
   id: string
   lei: string
   legal_name: string
+  transliterated_legal_name: string
+  other_names: string
   entity_status: string
-  legal_address_country: string
   entity_category: string
+  entity_sub_category: string
+  entity_legal_form: string
+  
+  // Legal Address
+  legal_address_line_1: string
+  legal_address_line_2: string
+  legal_address_line_3: string
+  legal_address_line_4: string
+  legal_address_city: string
+  legal_address_region: string
+  legal_address_country: string
+  legal_address_postal_code: string
+  
+  // HQ Address
+  hq_address_line_1: string
+  hq_address_line_2: string
+  hq_address_line_3: string
+  hq_address_line_4: string
+  hq_address_city: string
+  hq_address_region: string
+  hq_address_country: string
+  hq_address_postal_code: string
+  
+  // Registration
+  registration_authority: string
+  registration_authority_id: string
+  registration_number: string
+  
+  // Associated Entities
+  managing_lou: string
+  successor_lei: string
+  
+  // Dates
   registration_date: string
+  initial_registration_date: string
   last_update_date: string
+  next_renewal_date: string
+  
+  // Validation
+  validation_sources: string
+  validation_authority: string
 }
 
 interface Country {
@@ -20,6 +60,53 @@ interface Country {
   name: string
   active: boolean
 }
+
+interface ColumnConfig {
+  key: keyof LEIRecord
+  label: string
+  group: string
+  defaultVisible: boolean
+  width?: string
+}
+
+const AVAILABLE_COLUMNS: ColumnConfig[] = [
+  // Core fields
+  { key: 'lei', label: 'LEI', group: 'Core', defaultVisible: true, width: 'w-44' },
+  { key: 'legal_name', label: 'Legal Name', group: 'Core', defaultVisible: true, width: 'min-w-64' },
+  { key: 'entity_status', label: 'Status', group: 'Core', defaultVisible: true, width: 'w-32' },
+  { key: 'entity_category', label: 'Category', group: 'Core', defaultVisible: true, width: 'w-40' },
+  { key: 'legal_address_country', label: 'Country', group: 'Core', defaultVisible: true, width: 'w-24' },
+  { key: 'last_update_date', label: 'Last Updated', group: 'Core', defaultVisible: true, width: 'w-32' },
+  
+  // Additional Entity Info
+  { key: 'transliterated_legal_name', label: 'Transliterated Name', group: 'Entity', defaultVisible: false, width: 'min-w-64' },
+  { key: 'entity_sub_category', label: 'Sub Category', group: 'Entity', defaultVisible: false, width: 'w-40' },
+  { key: 'entity_legal_form', label: 'Legal Form', group: 'Entity', defaultVisible: false, width: 'w-40' },
+  
+  // Legal Address
+  { key: 'legal_address_city', label: 'City', group: 'Legal Address', defaultVisible: false, width: 'w-40' },
+  { key: 'legal_address_region', label: 'Region', group: 'Legal Address', defaultVisible: false, width: 'w-32' },
+  { key: 'legal_address_postal_code', label: 'Postal Code', group: 'Legal Address', defaultVisible: false, width: 'w-28' },
+  { key: 'legal_address_line_1', label: 'Address Line 1', group: 'Legal Address', defaultVisible: false, width: 'min-w-48' },
+  
+  // HQ Address
+  { key: 'hq_address_city', label: 'HQ City', group: 'HQ Address', defaultVisible: false, width: 'w-40' },
+  { key: 'hq_address_country', label: 'HQ Country', group: 'HQ Address', defaultVisible: false, width: 'w-24' },
+  { key: 'hq_address_region', label: 'HQ Region', group: 'HQ Address', defaultVisible: false, width: 'w-32' },
+  
+  // Registration
+  { key: 'registration_authority', label: 'Registration Authority', group: 'Registration', defaultVisible: false, width: 'w-48' },
+  { key: 'registration_number', label: 'Registration Number', group: 'Registration', defaultVisible: false, width: 'w-40' },
+  { key: 'initial_registration_date', label: 'Initial Registration', group: 'Registration', defaultVisible: false, width: 'w-36' },
+  { key: 'next_renewal_date', label: 'Next Renewal', group: 'Registration', defaultVisible: false, width: 'w-32' },
+  
+  // Associated Entities
+  { key: 'managing_lou', label: 'Managing LOU', group: 'Associated', defaultVisible: false, width: 'w-40' },
+  { key: 'successor_lei', label: 'Successor LEI', group: 'Associated', defaultVisible: false, width: 'w-44' },
+  
+  // Validation
+  { key: 'validation_authority', label: 'Validation Authority', group: 'Validation', defaultVisible: false, width: 'w-40' },
+]
 
 export default function LEIRecordsPage() {
   const [records, setRecords] = useState<LEIRecord[]>([])
@@ -42,6 +129,14 @@ export default function LEIRecordsPage() {
   const [filterBarHeight, setFilterBarHeight] = useState(0)
   const countryDropdownRef = useRef<HTMLDivElement>(null)
   const filterBarRef = useRef<HTMLDivElement>(null)
+  
+  // New features
+  const [visibleColumns, setVisibleColumns] = useState<Set<keyof LEIRecord>>(
+    new Set(AVAILABLE_COLUMNS.filter(col => col.defaultVisible).map(col => col.key))
+  )
+  const [expandedWidth, setExpandedWidth] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<LEIRecord | null>(null)
+  const [showColumnSelector, setShowColumnSelector] = useState(false)
 
   const API_BASE_URL = typeof window !== 'undefined' 
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18080')
@@ -67,6 +162,25 @@ export default function LEIRecordsPage() {
     }
     fetchCountries()
   }, [])
+
+  // Debug logging for records array
+  useEffect(() => {
+    if (debouncedSearch?.toLowerCase().includes('bgc')) {
+      console.log('=== DEBUG: Records State ===')
+      console.log('Total records:', records.length)
+      console.log('Records array:', records.map(r => ({ 
+        id: r?.id, 
+        lei: r?.lei, 
+        name: r?.legal_name 
+      })))
+      console.log('After filter (r && r.id):', records.filter(r => r && r.id).map(r => ({ 
+        id: r.id, 
+        lei: r.lei, 
+        name: r.legal_name 
+      })))
+      console.log('===========================')
+    }
+  }, [records, debouncedSearch])
 
   // Close country dropdown when clicking outside
   useEffect(() => {
@@ -166,6 +280,41 @@ export default function LEIRecordsPage() {
     setCurrentPage(1)
   }
 
+  const toggleColumn = (columnKey: keyof LEIRecord) => {
+    const newColumns = new Set(visibleColumns)
+    if (newColumns.has(columnKey)) {
+      newColumns.delete(columnKey)
+    } else {
+      newColumns.add(columnKey)
+    }
+    setVisibleColumns(newColumns)
+  }
+
+  const formatCellValue = (value: any, key: keyof LEIRecord): string => {
+    if (!value || value === 'null' || value === '0001-01-01T00:00:00Z') return '-'
+    
+    // Date fields
+    if (key.includes('date') && typeof value === 'string') {
+      try {
+        const date = new Date(value)
+        return date.toISOString().split('T')[0]
+      } catch {
+        return value
+      }
+    }
+    
+    return String(value)
+  }
+
+  const getColumnsByGroup = () => {
+    const groups: Record<string, ColumnConfig[]> = {}
+    AVAILABLE_COLUMNS.forEach(col => {
+      if (!groups[col.group]) groups[col.group] = []
+      groups[col.group].push(col)
+    })
+    return groups
+  }
+
   const totalPages = Math.ceil(totalRecords / itemsPerPage)
   const hasActiveFilters = debouncedSearch || statusFilter || categoryFilter || countryFilter
 
@@ -195,7 +344,7 @@ export default function LEIRecordsPage() {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className={`${expandedWidth ? 'max-w-full' : 'max-w-7xl'} mx-auto transition-all duration-300`}>
         <div className="mb-8 flex justify-between items-start">
           <div>
             <Link href="/" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-4 inline-block">
@@ -204,7 +353,82 @@ export default function LEIRecordsPage() {
             <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">LEI Records</h1>
             <p className="text-gray-600 dark:text-gray-400">GLEIF Legal Entity Identifiers (ISO 17442)</p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            {/* Expanded Width Toggle */}
+            <button
+              onClick={() => setExpandedWidth(!expandedWidth)}
+              className="px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition-colors text-white text-sm font-medium flex items-center gap-2"
+              title={expandedWidth ? 'Normal Width' : 'Expanded Width'}
+            >
+              {expandedWidth ? '⬅️ Normal' : '↔️ Expand'}
+            </button>
+            
+            {/* Column Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowColumnSelector(!showColumnSelector)}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-white text-sm font-medium flex items-center gap-2"
+              >
+                ⚙️ Columns ({visibleColumns.size})
+              </button>
+              
+              {showColumnSelector && (
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-white/20 rounded-lg shadow-xl z-50">
+                  <div className="sticky top-0 bg-white dark:bg-gray-800 border-b-2 border-gray-200 dark:border-white/10 p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">Select Columns</h3>
+                      <button
+                        onClick={() => setShowColumnSelector(false)}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <button
+                        onClick={() => setVisibleColumns(new Set(AVAILABLE_COLUMNS.map(c => c.key)))}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={() => setVisibleColumns(new Set(AVAILABLE_COLUMNS.filter(c => c.defaultVisible).map(c => c.key)))}
+                        className="px-2 py-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                      >
+                        Reset to Default
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {Object.entries(getColumnsByGroup()).map(([group, columns]) => (
+                    <div key={group} className="border-b border-gray-200 dark:border-white/10 last:border-b-0">
+                      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 font-semibold text-sm text-gray-700 dark:text-gray-300">
+                        {group}
+                      </div>
+                      <div className="p-2">
+                        {columns.map((column) => (
+                          <label
+                            key={String(column.key)}
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={visibleColumns.has(column.key)}
+                              onChange={() => toggleColumn(column.key)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-gray-900 dark:text-white">{column.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <ThemeToggle />
+          </div>
         </div>
 
         {error && (
@@ -376,7 +600,7 @@ export default function LEIRecordsPage() {
               ← Previous
             </button>
             <span className="text-gray-700 dark:text-gray-300">
-              Page {currentPage} {hasActiveFilters ? `(filtered: ${records.length} results)` : `of ${totalPages.toLocaleString()}`}
+                Page {currentPage} {hasActiveFilters ? `(showing ${records.length} of ${records.length})` : `of ${totalPages.toLocaleString()}`}
             </span>
             <button
               onClick={() => setCurrentPage(p => p + 1)}
@@ -438,109 +662,73 @@ export default function LEIRecordsPage() {
         )}
 
         {records.length > 0 ? (
-          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm shadow-lg" style={{ borderTopLeftRadius: hasActiveFilters ? 0 : undefined, borderTopRightRadius: hasActiveFilters ? 0 : undefined, borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}>
-            <table className="w-full table-auto">
-              <thead className="sticky z-30 bg-gray-100 dark:bg-gray-800" style={{ top: hasActiveFilters ? `${filterBarHeight}px` : '0px' }}>
+          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm shadow-lg overflow-x-auto" style={{ borderTopLeftRadius: hasActiveFilters ? 0 : undefined, borderTopRightRadius: hasActiveFilters ? 0 : undefined, borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}>
+            <table className="w-full" style={{ tableLayout: 'auto', borderCollapse: 'collapse' }}>
+              <thead className={hasActiveFilters ? 'bg-gray-100 dark:bg-gray-800' : 'sticky z-30 bg-gray-100 dark:bg-gray-800'} style={{ top: hasActiveFilters ? undefined : '0px' }}>
                 <tr>
+                  {AVAILABLE_COLUMNS.filter(col => visibleColumns.has(col.key)).map((column) => (
                     <th 
-                      onClick={() => handleSort('lei')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      key={String(column.key)}
+                      onClick={() => handleSort(column.key)}
+                      className={`${column.width || 'min-w-40'} px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors`}
                     >
                       <div className="flex items-center gap-1">
-                        LEI
-                        {sortField === 'lei' && (
+                        {column.label}
+                        {sortField === column.key && (
                           <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                         )}
                       </div>
                     </th>
-                    <th 
-                      onClick={() => handleSort('legal_name')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Legal Name
-                        {sortField === 'legal_name' && (
-                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('legal_address_country')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Country
-                        {sortField === 'legal_address_country' && (
-                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('entity_status')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Status
-                        {sortField === 'entity_status' && (
-                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('entity_category')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Category
-                        {sortField === 'entity_category' && (
-                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('last_update_date')}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Last Updated
-                        {sortField === 'last_update_date' && (
-                          <span className="text-blue-600 dark:text-blue-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </div>
-                    </th>
-                  </tr>
+                  ))}
+                </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-white/10">
-                  {records.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {record.lei}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                        {record.legal_name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {record.legal_address_country || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded ${
-                          record.entity_status === 'ACTIVE' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                        }`}>
-                          {record.entity_status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {record.entity_category || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                        {record.last_update_date && !record.last_update_date.startsWith('0001-') 
-                          ? new Date(record.last_update_date).toISOString().split('T')[0] 
-                          : '-'}
-                      </td>
+                  {records.filter(r => r && r.id).map((record, index) => {
+                    // Debug logging
+                    if (debouncedSearch?.toLowerCase().includes('bgc')) {
+                      console.log(`Rendering row ${index}:`, {
+                        id: record.id,
+                        lei: record.lei,
+                        name: record.legal_name,
+                        key: record.id
+                      })
+                    }
+                    
+                    return (
+                    <tr 
+                      key={record.id}
+                      data-lei={record.lei}
+                      data-row-index={index}
+                      onClick={() => setSelectedRecord(record)}
+                      className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                      style={{ height: 'auto', minHeight: '48px' }}
+                    >
+                      {AVAILABLE_COLUMNS.filter(col => visibleColumns.has(col.key)).map((column) => {
+                        const value = record[column.key]
+                        const isStatus = column.key === 'entity_status'
+                        
+                        return (
+                          <td 
+                            key={String(column.key)} 
+                            className={`px-4 py-3 text-sm ${column.key === 'lei' ? 'font-mono' : ''} text-gray-900 dark:text-gray-100 ${column.key.includes('date') || column.key === 'lei' ? 'whitespace-nowrap' : ''}`}
+                          >
+                            {isStatus ? (
+                              <span className={`px-2 py-1 text-xs rounded ${
+                                value === 'ACTIVE' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                  : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                              }`}>
+                                {value || '-'}
+                              </span>
+                            ) : (
+                              formatCellValue(value, column.key)
+                            )}
+                          </td>
+                        )
+                      })}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
           </div>
@@ -561,7 +749,7 @@ export default function LEIRecordsPage() {
             </button>
             <div className="flex items-center gap-4">
               <span className="text-gray-700 dark:text-gray-300">
-                Page {currentPage} {hasActiveFilters && `(showing ${records.length} results)`}
+                Page {currentPage} {hasActiveFilters && `(showing ${records.length})`}
               </span>
               <div className="flex items-center gap-2">
                 <label htmlFor="items-per-page" className="text-sm text-gray-700 dark:text-gray-300">Items per page:</label>
@@ -601,6 +789,224 @@ export default function LEIRecordsPage() {
           </p>
         </div>
       </div>
+
+      {/* Detailed View Modal */}
+      {selectedRecord && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedRecord(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border-2 border-gray-300 dark:border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-white/10 p-6 flex justify-between items-start z-10">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">LEI Record Details</h2>
+                <p className="text-lg font-mono text-blue-600 dark:text-blue-400">{selectedRecord.lei}</p>
+              </div>
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white font-medium"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Core Information */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                  Core Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Legal Name</label>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">{selectedRecord.legal_name}</p>
+                  </div>
+                  {selectedRecord.transliterated_legal_name && (
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Transliterated Name</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.transliterated_legal_name}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</label>
+                    <p className="mt-1">
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        selectedRecord.entity_status === 'ACTIVE' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                          : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                      }`}>
+                        {selectedRecord.entity_status}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Category</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.entity_category || '-'}</p>
+                  </div>
+                  {selectedRecord.entity_sub_category && (
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Sub Category</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.entity_sub_category}</p>
+                    </div>
+                  )}
+                  {selectedRecord.entity_legal_form && (
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Legal Form</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.entity_legal_form}</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Legal Address */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                  Legal Address
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedRecord.legal_address_line_1 && (
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.legal_address_line_1}
+                        {selectedRecord.legal_address_line_2 && <><br/>{selectedRecord.legal_address_line_2}</>}
+                        {selectedRecord.legal_address_line_3 && <><br/>{selectedRecord.legal_address_line_3}</>}
+                        {selectedRecord.legal_address_line_4 && <><br/>{selectedRecord.legal_address_line_4}</>}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_city || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Region</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_region || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Country</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_country || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Postal Code</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_postal_code || '-'}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* HQ Address (if different) */}
+              {(selectedRecord.hq_address_city || selectedRecord.hq_address_country) && (
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                    Headquarters Address
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedRecord.hq_address_line_1 && (
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">
+                          {selectedRecord.hq_address_line_1}
+                          {selectedRecord.hq_address_line_2 && <><br/>{selectedRecord.hq_address_line_2}</>}
+                          {selectedRecord.hq_address_line_3 && <><br/>{selectedRecord.hq_address_line_3}</>}
+                          {selectedRecord.hq_address_line_4 && <><br/>{selectedRecord.hq_address_line_4}</>}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_city || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Region</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_region || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Country</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_country || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Postal Code</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_postal_code || '-'}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Registration Information */}
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                  Registration Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Registration Authority</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.registration_authority || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Registration Number</label>
+                    <p className="text-sm font-mono text-gray-900 dark:text-white mt-1">{selectedRecord.registration_number || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Initial Registration</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.initial_registration_date, 'initial_registration_date')}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Last Updated</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.last_update_date, 'last_update_date')}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Next Renewal</label>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.next_renewal_date, 'next_renewal_date')}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Associated Entities */}
+              {(selectedRecord.managing_lou || selectedRecord.successor_lei) && (
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                    Associated Entities
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedRecord.managing_lou && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Managing LOU</label>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.managing_lou}</p>
+                      </div>
+                    )}
+                    {selectedRecord.successor_lei && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Successor LEI</label>
+                        <p className="text-sm font-mono text-gray-900 dark:text-white mt-1">{selectedRecord.successor_lei}</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Validation */}
+              {selectedRecord.validation_authority && (
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
+                    Validation
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Validation Authority</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.validation_authority}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
