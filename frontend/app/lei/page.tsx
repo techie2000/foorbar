@@ -128,13 +128,22 @@ export default function LEIStatusPage() {
   const getFrequencyLabel = (status: ProcessingStatus | null): string => {
     if (!status) return ''
     
-    // Check if next run is more than 24 hours away for full sync (weekly)
+    // Use job_type as primary indicator (more reliable than time calculation)
+    if (status.job_type === 'DAILY_FULL') {
+      return 'Weekly'
+    }
+    
+    if (status.job_type === 'DAILY_DELTA') {
+      return 'Hourly'
+    }
+    
+    // Fallback to time-based detection for unknown job types
     if (status.next_run_at && status.last_run_at) {
       const nextRun = new Date(status.next_run_at)
       const lastRun = new Date(status.last_run_at)
       const hoursDiff = (nextRun.getTime() - lastRun.getTime()) / (1000 * 60 * 60)
       
-      if (hoursDiff > 48) {
+      if (hoursDiff > 24) {
         return 'Weekly'
       } else if (hoursDiff > 2) {
         return 'Daily'
@@ -143,7 +152,7 @@ export default function LEIStatusPage() {
       }
     }
     
-    return status.job_type === 'DAILY_FULL' ? 'Weekly' : 'Hourly'
+    return 'Unknown'
   }
 
   const renderStatusCard = (title: string, status: ProcessingStatus | null) => {

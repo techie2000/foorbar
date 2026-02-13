@@ -200,6 +200,9 @@ func (s *schedulerService) Start() error {
 	// CRITICAL: Reset any stuck RUNNING statuses from previous crashes/restarts
 	s.cleanupStuckJobStatuses()
 
+	// CRITICAL: Initialize next_run_at for jobs that don't have it set
+	s.initializeNextRunTimes()
+
 	// Start goroutine for daily delta sync (runs every hour to check for updates)
 	go s.dailyDeltaSyncLoop()
 
@@ -259,6 +262,67 @@ func (s *schedulerService) cleanupStuckJobStatuses() {
 	}
 
 	log.Info().Msg("Stuck job status cleanup completed")
+}
+
+// initializeNextRunTimes ensures all jobs have next_run_at set
+// This handles cases where jobs completed but next_run_at wasn't saved
+func (s *schedulerService) initializeNextRunTimes() {
+	log.Info().Msg("Initializing next_run_at for jobs if missing")
+
+	// Initialize DAILY_FULL
+	fullStatus, err := s.leiService.GetProcessingStatus("DAILY_FULL")
+	if err == nil && fullStatus.NextRunAt == nil {
+		log.Info().
+			Str("job_type", "DAILY_FULL").
+			Str("status", fullStatus.Status).
+			Msg("Setting next_run_at for DAILY_FULL job")
+		fullStatus.NextRunAt = calculateNextWeeklyRun()
+		if err := s.leiService.UpdateProcessingStatus(fullStatus); err != nil {
+			log.Error().Err(err).Msg("Failed to update DAILY_FULL next_run_at")
+		} else {
+			log.Info().
+				Time("next_run", *fullStatus.NextRunAt).
+				Msg("DAILY_FULL next_run_at initialized")
+		}
+	}
+
+	// Initialize DAILY_DELTA (runs hourly but named DAILY_DELTA)
+	deltaStatus, err := s.leiService.GetProcessingStatus("DAILY_DELTA")
+	if err == nil && deltaStatus.NextRunAt == nil {
+		log.Info().
+			Str("job_type", "DAILY_DELTA").
+			Str("status", deltaStatus.Status).
+			Msg("Setting next_run_at for DAILY_DELTA job")
+		deltaStatus.NextRunAt = calculateNextRun(s.deltaSyncInterval)
+		if err := s.leiService.UpdateProcessingStatus(deltaStatus); err != nil {
+			log.Error().Err(err).Msg("Failed to update DAILY_DELTA next_run_at")
+		} else {
+			log.Info().
+				Time("next_run", *deltaStatus.NextRunAt).
+				Msg("DAILY_DELTA next_run_at initialized")
+		}
+	} else if err != nil {
+		// DAILY_DELTA job doesn't exist - create it
+		log.Info().Msg("DAILY_DELTA job status doesn't exist, creating...")
+		now := time.Now()
+		nextRun := calculateNextRun(s.deltaSyncInterval)
+		newStatus := &domain.FileProcessingStatus{
+			JobType:   "DAILY_DELTA",
+			Status:    "IDLE",
+			NextRunAt: nextRun,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		if err := s.leiService.UpdateProcessingStatus(newStatus); err != nil {
+			log.Error().Err(err).Msg("Failed to create DAILY_DELTA job status")
+		} else {
+			log.Info().
+				Time("next_run", *nextRun).
+				Msg("DAILY_DELTA job status created")
+		}
+	}
+
+	log.Info().Msg("Next_run_at initialization completed")
 }
 
 // dailyDeltaSyncLoop runs delta sync at configured interval
@@ -489,7 +553,7 @@ func (s *schedulerService) RunDailyDeltaSync() error {
 			log.Info().Msg("No new delta file available (duplicate hash detected)")
 			status.Status = "COMPLETED"
 			status.LastSuccessAt = &now
-			status.NextRunAt = calculateNextRun(1 * time.Hour)
+			status.NextRunAt = calculateNextRun(s.deltaSyncInterval)
 			status.ErrorMessage = ""
 			s.leiService.UpdateProcessingStatus(status)
 			return nil
@@ -516,7 +580,7 @@ func (s *schedulerService) RunDailyDeltaSync() error {
 	// Update status
 	status.Status = "COMPLETED"
 	status.LastSuccessAt = &now
-	status.NextRunAt = calculateNextRun(1 * time.Hour)
+	status.NextRunAt = calculateNextRun(s.deltaSyncInterval)
 	status.ErrorMessage = ""
 	if err := s.leiService.UpdateProcessingStatus(status); err != nil {
 		log.Error().Err(err).Msg("Failed to update processing status")
