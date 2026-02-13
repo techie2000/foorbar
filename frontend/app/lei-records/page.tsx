@@ -137,6 +137,8 @@ export default function LEIRecordsPage() {
   const [expandedWidth, setExpandedWidth] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<LEIRecord | null>(null)
   const [showColumnSelector, setShowColumnSelector] = useState(false)
+  const [managingLouName, setManagingLouName] = useState<string | null>(null)
+  const [dateDisplayMode, setDateDisplayMode] = useState<'relative' | 'absolute'>('relative')
 
   const API_BASE_URL = typeof window !== 'undefined' 
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18080')
@@ -289,6 +291,70 @@ export default function LEIRecordsPage() {
     }
     setVisibleColumns(newColumns)
   }
+
+  // Calculate relative time from a date
+  const getRelativeTime = (dateString: string): { days: number, relative: string } => {
+    if (!dateString || dateString === '0001-01-01T00:00:00Z') {
+      return { days: 0, relative: '-' }
+    }
+    
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = date.getTime() - now.getTime()
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+    const absDays = Math.abs(diffDays)
+    
+    let relative: string
+    if (absDays === 0) {
+      relative = 'today'
+    } else if (absDays === 1) {
+      relative = diffDays < 0 ? '1 day ago' : 'in 1 day'
+    } else if (absDays < 7) {
+      relative = diffDays < 0 ? `${absDays} days ago` : `in ${absDays} days`
+    } else if (absDays < 30) {
+      const weeks = Math.round(absDays / 7)
+      relative = diffDays < 0 
+        ? `${weeks} week${weeks > 1 ? 's' : ''} ago` 
+        : `in ${weeks} week${weeks > 1 ? 's' : ''}`
+    } else if (absDays < 365) {
+      const months = Math.round(absDays / 30)
+      relative = diffDays < 0 
+        ? `${months} month${months > 1 ? 's' : ''} ago` 
+        : `in ${months} month${months > 1 ? 's' : ''}`
+    } else {
+      const years = Math.round(absDays / 365)
+      relative = diffDays < 0 
+        ? `${years} year${years > 1 ? 's' : ''} ago` 
+        : `in ${years} year${years > 1 ? 's' : ''}`
+    }
+    
+    return { days: diffDays, relative }
+  }
+
+  // Fetch managing LOU name when modal opens
+  useEffect(() => {
+    const fetchManagingLouName = async () => {
+      if (!selectedRecord?.managing_lou) {
+        setManagingLouName(null)
+        return
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/lei/${selectedRecord.managing_lou}`)
+        if (response.ok) {
+          const data = await response.json()
+          setManagingLouName(data.legal_name || null)
+        } else {
+          setManagingLouName(null)
+        }
+      } catch (err) {
+        console.error('Failed to fetch managing LOU name:', err)
+        setManagingLouName(null)
+      }
+    }
+    
+    fetchManagingLouName()
+  }, [selectedRecord, API_BASE_URL])
 
   const formatCellValue = (value: any, key: keyof LEIRecord): string => {
     if (!value || value === 'null' || value === '0001-01-01T00:00:00Z') return '-'
@@ -801,17 +867,29 @@ export default function LEIRecordsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-white/10 p-6 flex justify-between items-start z-10">
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">LEI Record Details</h2>
-                <p className="text-lg font-mono text-blue-600 dark:text-blue-400">{selectedRecord.lei}</p>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-white/10 p-6 z-10">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">LEI Record Details</h2>
+                  <p className="text-lg font-mono text-blue-600 dark:text-blue-400">{selectedRecord.lei}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white font-medium"
+                >
+                  ✕ Close
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white font-medium"
-              >
-                ✕ Close
-              </button>
+              {/* Date Display Mode Toggle */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Date display:</span>
+                <button
+                  onClick={() => setDateDisplayMode(dateDisplayMode === 'relative' ? 'absolute' : 'relative')}
+                  className="px-3 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-100 transition-colors font-medium"
+                >
+                  {dateDisplayMode === 'relative' ? '📅 Relative' : '🔢 Days only'}
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -953,15 +1031,42 @@ export default function LEIRecordsPage() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Initial Registration</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.initial_registration_date, 'initial_registration_date')}</p>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {formatCellValue(selectedRecord.initial_registration_date, 'initial_registration_date')}
+                      {selectedRecord.initial_registration_date && selectedRecord.initial_registration_date !== '0001-01-01T00:00:00Z' && (
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                          ({dateDisplayMode === 'relative' 
+                            ? getRelativeTime(selectedRecord.initial_registration_date).relative
+                            : `${Math.abs(getRelativeTime(selectedRecord.initial_registration_date).days)} days ago`})
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Last Updated</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.last_update_date, 'last_update_date')}</p>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {formatCellValue(selectedRecord.last_update_date, 'last_update_date')}
+                      {selectedRecord.last_update_date && selectedRecord.last_update_date !== '0001-01-01T00:00:00Z' && (
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                          ({dateDisplayMode === 'relative' 
+                            ? getRelativeTime(selectedRecord.last_update_date).relative
+                            : `${Math.abs(getRelativeTime(selectedRecord.last_update_date).days)} days ago`})
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Next Renewal</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{formatCellValue(selectedRecord.next_renewal_date, 'next_renewal_date')}</p>
+                    <p className="text-sm text-gray-900 dark:text-white mt-1">
+                      {formatCellValue(selectedRecord.next_renewal_date, 'next_renewal_date')}
+                      {selectedRecord.next_renewal_date && selectedRecord.next_renewal_date !== '0001-01-01T00:00:00Z' && (
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                          ({dateDisplayMode === 'relative' 
+                            ? getRelativeTime(selectedRecord.next_renewal_date).relative
+                            : `in ${getRelativeTime(selectedRecord.next_renewal_date).days} days`})
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
               </section>
@@ -976,7 +1081,13 @@ export default function LEIRecordsPage() {
                     {selectedRecord.managing_lou && (
                       <div>
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Managing LOU</label>
-                        <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.managing_lou}</p>
+                        <p className="text-sm text-gray-900 dark:text-white mt-1 font-mono">{selectedRecord.managing_lou}</p>
+                        {managingLouName && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{managingLouName}</p>
+                        )}
+                        {managingLouName === null && selectedRecord.managing_lou && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 italic">Loading name...</p>
+                        )}
                       </div>
                     )}
                     {selectedRecord.successor_lei && (
