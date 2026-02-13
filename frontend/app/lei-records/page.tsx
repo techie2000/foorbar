@@ -331,6 +331,32 @@ export default function LEIRecordsPage() {
     return { days: diffDays, relative }
   }
 
+  // Build OpenStreetMap URL from address components
+  const buildMapUrl = (address: {
+    line1?: string
+    line2?: string
+    line3?: string
+    line4?: string
+    city?: string
+    region?: string
+    country?: string
+    postalCode?: string
+  }) => {
+    const parts = [
+      address.line1,
+      address.line2,
+      address.line3,
+      address.line4,
+      address.city,
+      address.region,
+      address.country,
+      address.postalCode
+    ].filter(Boolean)
+    
+    const query = parts.join(', ')
+    return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`
+  }
+
   // Fetch managing LOU name when modal opens
   useEffect(() => {
     const fetchManagingLouName = async () => {
@@ -949,12 +975,52 @@ export default function LEIRecordsPage() {
                 
                 {/* Column Headers */}
                 <div className="grid grid-cols-2 gap-6 mb-4 bg-white dark:bg-gray-900">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                    Legal Address
-                  </h4>
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                    Headquarters Address
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                      Legal Address
+                    </h4>
+                    {selectedRecord.legal_address_city && (
+                      <button
+                        onClick={() => window.open(buildMapUrl({
+                          line1: selectedRecord.legal_address_line_1,
+                          line2: selectedRecord.legal_address_line_2,
+                          line3: selectedRecord.legal_address_line_3,
+                          line4: selectedRecord.legal_address_line_4,
+                          city: selectedRecord.legal_address_city,
+                          region: selectedRecord.legal_address_region,
+                          country: selectedRecord.legal_address_country,
+                          postalCode: selectedRecord.legal_address_postal_code
+                        }), '_blank')}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs font-medium flex items-center gap-1 transition-colors"
+                        title="View on OpenStreetMap"
+                      >
+                        🗺️ View on Map
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                      Headquarters Address
+                    </h4>
+                    {selectedRecord.hq_address_city && (
+                      <button
+                        onClick={() => window.open(buildMapUrl({
+                          line1: selectedRecord.hq_address_line_1,
+                          line2: selectedRecord.hq_address_line_2,
+                          line3: selectedRecord.hq_address_line_3,
+                          line4: selectedRecord.hq_address_line_4,
+                          city: selectedRecord.hq_address_city,
+                          region: selectedRecord.hq_address_region,
+                          country: selectedRecord.hq_address_country,
+                          postalCode: selectedRecord.hq_address_postal_code
+                        }), '_blank')}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs font-medium flex items-center gap-1 transition-colors"
+                        title="View on OpenStreetMap"
+                      >
+                        🗺️ View on Map
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-4 bg-white dark:bg-gray-900">
