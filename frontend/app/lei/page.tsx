@@ -103,15 +103,15 @@ export default function LEIStatusPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'RUNNING':
-        return 'bg-blue-100 text-blue-800 border-blue-300'
+        return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700'
       case 'COMPLETED':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200 dark:border-green-700'
       case 'FAILED':
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200 dark:border-red-700'
       case 'IDLE':
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
     }
   }
 
@@ -174,28 +174,28 @@ export default function LEIStatusPage() {
             {file.total_records > 0 ? (
               <>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Processing Progress</span>
-                  <span className="text-gray-600">
+                  <span className="font-medium text-gray-900 dark:text-white">Processing Progress</span>
+                  <span className="text-gray-600 dark:text-gray-400">
                     {file.processed_records.toLocaleString()} / {file.total_records.toLocaleString()} records ({progress.toFixed(1)}%)
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
                   <div 
-                    className="bg-blue-600 h-4 rounded-full transition-all duration-500 ease-out"
+                    className="bg-blue-600 dark:bg-blue-500 h-4 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${Math.min(progress, 100)}%` }}
                   />
                 </div>
               </>
             ) : (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 <p className="mb-2">⏳ Downloading file... ({file.processed_records.toLocaleString()} records processed)</p>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div className="bg-blue-600 h-4 rounded-full animate-pulse" style={{ width: '30%' }} />
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
+                  <div className="bg-blue-600 dark:bg-blue-500 h-4 rounded-full animate-pulse" style={{ width: '30%' }} />
                 </div>
               </div>
             )}
             {file.failed_records > 0 && (
-              <p className="text-sm text-orange-600 mt-2">
+              <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
                 ⚠️ Failed records: {file.failed_records.toLocaleString()}
               </p>
             )}
@@ -204,25 +204,25 @@ export default function LEIStatusPage() {
 
         {/* Current File Information */}
         {file && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold mb-2 text-sm text-gray-700">Current File</h3>
-            <div className="space-y-1 text-sm">
-              <p className="truncate"><span className="font-medium">Name:</span> {file.file_name}</p>
-              <p><span className="font-medium">Status:</span> {file.processing_status}</p>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-200">Current File</h3>
+            <div className="space-y-1 text-sm text-gray-900 dark:text-gray-100">
+              <p className="truncate"><span className="font-medium text-gray-700 dark:text-gray-300">Name:</span> {file.file_name}</p>
+              <p><span className="font-medium text-gray-700 dark:text-gray-300">Status:</span> {file.processing_status}</p>
               {file.total_records > 0 && (
-                <p><span className="font-medium">Total Records:</span> {file.total_records.toLocaleString()}</p>
+                <p><span className="font-medium text-gray-700 dark:text-gray-300">Total Records:</span> {file.total_records.toLocaleString()}</p>
               )}
-              <p><span className="font-medium">Processed:</span> {file.processed_records.toLocaleString()} records</p>
+              <p><span className="font-medium text-gray-700 dark:text-gray-300">Processed:</span> {file.processed_records.toLocaleString()} records</p>
               {file.last_processed_lei && (
-                <p className="truncate"><span className="font-medium">Last LEI:</span> {file.last_processed_lei}</p>
+                <p className="truncate"><span className="font-medium text-gray-700 dark:text-gray-300">Last LEI:</span> {file.last_processed_lei}</p>
               )}
               {file.failure_category && (
-                <p className="text-red-600">
+                <p className="text-red-600 dark:text-red-400">
                   <span className="font-medium">Error Category:</span> {file.failure_category}
                 </p>
               )}
               {file.processing_error && (
-                <p className="text-red-600 text-xs mt-2">
+                <p className="text-red-600 dark:text-red-400 text-xs mt-2">
                   <span className="font-medium">Error:</span> {file.processing_error}
                 </p>
               )}
@@ -233,23 +233,23 @@ export default function LEIStatusPage() {
         {/* Timestamps */}
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">Last Run:</span>
-            <span className="font-medium">{formatDate(status.last_run_at)}</span>
+            <span className="text-gray-600 dark:text-gray-400">Last Run:</span>
+            <span className="font-medium text-gray-900 dark:text-white">{formatDate(status.last_run_at)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Last Success:</span>
-            <span className="font-medium">{formatDate(status.last_success_at)}</span>
+            <span className="text-gray-600 dark:text-gray-400">Last Success:</span>
+            <span className="font-medium text-gray-900 dark:text-white">{formatDate(status.last_success_at)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Next Run:</span>
-            <span className="font-medium">{formatDate(status.next_run_at)}</span>
+            <span className="text-gray-600 dark:text-gray-400">Next Run:</span>
+            <span className="font-medium text-gray-900 dark:text-white">{formatDate(status.next_run_at)}</span>
           </div>
         </div>
 
         {/* Error Message */}
         {status.error_message && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">
+          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-800 dark:text-red-300">
               <span className="font-semibold">Error:</span> {status.error_message}
             </p>
           </div>
@@ -322,24 +322,24 @@ export default function LEIStatusPage() {
         </div>
 
         {/* Legend */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-4">
-          <h3 className="font-semibold mb-3 text-gray-700">Status Legend</h3>
+        <div className="mt-8 bg-white dark:bg-white/5 rounded-lg shadow-md p-4 border-2 border-gray-200 dark:border-white/10">
+          <h3 className="font-semibold mb-3 text-gray-700 dark:text-gray-200">Status Legend</h3>
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('IDLE')}`}>IDLE</span>
-              <span className="text-gray-600">Waiting for next scheduled run</span>
+              <span className="text-gray-600 dark:text-gray-400">Waiting for next scheduled run</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('RUNNING')}`}>RUNNING</span>
-              <span className="text-gray-600">Currently processing data</span>
+              <span className="text-gray-600 dark:text-gray-400">Currently processing data</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('COMPLETED')}`}>COMPLETED</span>
-              <span className="text-gray-600">Successfully finished</span>
+              <span className="text-gray-600 dark:text-gray-400">Successfully finished</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full font-semibold border-2 ${getStatusColor('FAILED')}`}>FAILED</span>
-              <span className="text-gray-600">Encountered an error</span>
+              <span className="text-gray-600 dark:text-gray-400">Encountered an error</span>
             </div>
           </div>
         </div>
