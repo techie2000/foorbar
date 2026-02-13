@@ -106,6 +106,91 @@ const API_BASE_URL = typeof window !== 'undefined'
   </select>
   ```
 
+### UI Element Visibility Checklist
+**CRITICAL**: Always verify visibility when implementing or modifying UI elements. Complete this checklist for EVERY visual change:
+
+#### Mandatory Visibility Checks
+- [ ] **Light Mode Visibility** - Verify all elements are clearly visible with sufficient contrast
+  - Text colors must be dark enough on light backgrounds (`text-gray-900`, not `text-gray-500`)
+  - Borders must be visible (`border-gray-200` minimum)
+  - Shadows should enhance but not overwhelm (`shadow-sm`, `shadow-md`)
+  - Status indicators (badges, icons) must stand out
+
+- [ ] **Dark Mode Visibility** - Ensure elements don't disappear or blend into dark backgrounds
+  - Text colors must be light enough (`text-gray-100`, `text-white`)
+  - Borders need contrast (`border-white/10` minimum)
+  - Backgrounds should use transparency for depth (`bg-white/5`, `bg-gray-800`)
+  - Avoid pure black backgrounds (use `bg-gray-900` instead)
+
+- [ ] **Color Contrast Ratios** - Meet WCAG AA standards (4.5:1 for normal text, 3:1 for large text)
+  - Use online contrast checkers for verification
+  - Test with browser DevTools contrast inspection
+  - Provide alternative indicators beyond color alone
+
+- [ ] **Interactive Element States** - Test ALL states in both light and dark modes
+  - Default state clearly visible
+  - Hover state shows clear feedback (`hover:bg-blue-50`, `dark:hover:bg-white/5`)
+  - Focus state visible for keyboard navigation (`focus:ring-2`, `focus:ring-blue-500`)
+  - Disabled state clearly distinguishable (`disabled:opacity-50`, `disabled:cursor-not-allowed`)
+  - Active/pressed state provides tactile feedback
+
+- [ ] **Loading and Progress Indicators** - Ensure visibility during async operations
+  - Spinners must be visible in both modes (use contrasting border colors)
+  - Loading overlays should dim content but remain translucent (`bg-white/70`, `dark:bg-gray-900/70`)
+  - Progress text must have strong contrast (`text-gray-900`, `dark:text-gray-100`)
+  - Consider adding a container card for spinners (`bg-white`, `dark:bg-gray-800` with `shadow-lg`)
+
+- [ ] **Status Badges and Indicators** - Clear visual distinction for all states
+  - Active/success: `bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200`
+  - Warning: `bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200`
+  - Error: `bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200`
+  - Inactive/neutral: `bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200`
+  - Use icons alongside colors for better accessibility
+
+- [ ] **Buttons and Clickable Areas** - Obvious interactivity in all modes
+  - Primary buttons: Strong color contrast and clear borders
+  - Secondary buttons: Visible outline or background
+  - Links: Underline or distinct color with hover state
+  - Icon buttons: Clear hover/focus indicators
+  - Minimum touch target size: 44x44px for mobile
+
+#### Common Visibility Issues to Avoid
+❌ **Light Mode Issues**:
+- Thin borders that disappear (`border-gray-100` too light)
+- Gray text on white (`text-gray-400` insufficient contrast)
+- Spinners with only `border-b-2` (not visible enough)
+- Subtle shadows that don't provide depth
+
+❌ **Dark Mode Issues**:
+- White text on light gray backgrounds (insufficient contrast)
+- Pure black backgrounds (`bg-black` too harsh)
+- Missing borders on dark cards (elements blend together)
+- Invisible focus indicators
+
+#### Testing Tools
+- Browser DevTools Inspector (Accessibility tab shows contrast ratios)
+- WAVE browser extension for accessibility testing
+- Manual testing: Toggle between light/dark modes for every change
+- Test on actual devices when possible (not just DevTools responsive mode)
+
+#### Example: Proper Loading Spinner Implementation
+```tsx
+{/* ✅ CORRECT: Visible in both modes */}
+{loading && (
+  <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="bg-white dark:bg-gray-800 px-6 py-4 rounded-lg shadow-lg border-2 border-blue-500">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400"></div>
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-2">Loading...</p>
+    </div>
+  </div>
+)}
+
+{/* ❌ INCORRECT: Not visible in light mode */}
+{loading && (
+  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+)}
+```
+
 ### Responsive Design
 - Use responsive grid classes: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
 - Mobile-first approach with breakpoints

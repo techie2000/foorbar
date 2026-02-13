@@ -754,7 +754,21 @@ export default function LEIRecordsPage() {
         )}
 
         {records.length > 0 ? (
-          <div className="bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm shadow-lg overflow-x-auto" style={{ borderTopLeftRadius: hasActiveFilters ? 0 : undefined, borderTopRightRadius: hasActiveFilters ? 0 : undefined, borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}>
+          <div className="relative">
+            {/* Loading overlay - Fixed to viewport for visibility when scrolled */}
+            {loading && (
+              <div className="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3 bg-white dark:bg-gray-800 px-8 py-6 rounded-lg shadow-2xl border-2 border-blue-500 dark:border-blue-400">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400"></div>
+                  <p className="text-base font-semibold text-gray-900 dark:text-gray-100">Loading results...</p>
+                </div>
+              </div>
+            )}
+            
+            <div 
+              className={`bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm shadow-lg overflow-x-auto transition-opacity duration-200 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`} 
+              style={{ borderTopLeftRadius: hasActiveFilters ? 0 : undefined, borderTopRightRadius: hasActiveFilters ? 0 : undefined, borderBottomLeftRadius: '0.5rem', borderBottomRightRadius: '0.5rem' }}
+            >
             <table className="w-full" style={{ tableLayout: 'auto', borderCollapse: 'collapse' }}>
               <thead className={hasActiveFilters ? 'bg-gray-100 dark:bg-gray-800' : 'sticky z-30 bg-gray-100 dark:bg-gray-800'} style={{ top: hasActiveFilters ? undefined : '0px' }}>
                 <tr>
@@ -823,6 +837,7 @@ export default function LEIRecordsPage() {
                   })}
                 </tbody>
               </table>
+            </div>
           </div>
           ) : (
             <div className="text-center py-12 bg-white border-2 border-gray-200 dark:bg-white/5 dark:border-white/10 backdrop-blur-sm rounded-lg">
