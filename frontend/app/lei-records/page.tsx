@@ -941,79 +941,108 @@ export default function LEIRecordsPage() {
                 </div>
               </section>
 
-              {/* Legal Address */}
+              {/* Addresses - Side by Side with Aligned Fields */}
               <section className="bg-white dark:bg-gray-900 p-6 pb-0">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
-                  Legal Address
+                  Addresses
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
-                  {selectedRecord.legal_address_line_1 && (
-                    <div className="md:col-span-2">
+                
+                {/* Column Headers */}
+                <div className="grid grid-cols-2 gap-6 mb-4 bg-white dark:bg-gray-900">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                    Legal Address
+                  </h4>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                    Headquarters Address
+                  </h4>
+                </div>
+
+                <div className="space-y-4 bg-white dark:bg-gray-900">
+                  {/* Address Row */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
                       <p className="text-sm text-gray-900 dark:text-white mt-1">
-                        {selectedRecord.legal_address_line_1}
+                        {selectedRecord.legal_address_line_1 || '-'}
                         {selectedRecord.legal_address_line_2 && <><br/>{selectedRecord.legal_address_line_2}</>}
                         {selectedRecord.legal_address_line_3 && <><br/>{selectedRecord.legal_address_line_3}</>}
                         {selectedRecord.legal_address_line_4 && <><br/>{selectedRecord.legal_address_line_4}</>}
                       </p>
                     </div>
-                  )}
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_city || '-'}</p>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.hq_address_line_1 ? (
+                          <>
+                            {selectedRecord.hq_address_line_1}
+                            {selectedRecord.hq_address_line_2 && <><br/>{selectedRecord.hq_address_line_2}</>}
+                            {selectedRecord.hq_address_line_3 && <><br/>{selectedRecord.hq_address_line_3}</>}
+                            {selectedRecord.hq_address_line_4 && <><br/>{selectedRecord.hq_address_line_4}</>}
+                          </>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400 italic">Same as Legal</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Region</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_region || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Country</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_country || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Postal Code</label>
-                    <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_postal_code || '-'}</p>
-                  </div>
-                </div>
-              </section>
 
-              {/* HQ Address (if different) */}
-              {(selectedRecord.hq_address_city || selectedRecord.hq_address_country) && (
-                <section className="bg-white dark:bg-gray-900 p-6 pb-0">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-white/10">
-                    Headquarters Address
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-gray-900">
-                    {selectedRecord.hq_address_line_1 && (
-                      <div className="md:col-span-2">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Address</label>
-                        <p className="text-sm text-gray-900 dark:text-white mt-1">
-                          {selectedRecord.hq_address_line_1}
-                          {selectedRecord.hq_address_line_2 && <><br/>{selectedRecord.hq_address_line_2}</>}
-                          {selectedRecord.hq_address_line_3 && <><br/>{selectedRecord.hq_address_line_3}</>}
-                          {selectedRecord.hq_address_line_4 && <><br/>{selectedRecord.hq_address_line_4}</>}
-                        </p>
-                      </div>
-                    )}
+                  {/* City Row */}
+                  <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</label>
-                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_city || '-'}</p>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_city || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">City</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.hq_address_city || (selectedRecord.hq_address_line_1 ? '-' : <span className="text-gray-500 dark:text-gray-400 italic">Same as Legal</span>)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Region Row */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Region</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_region || '-'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Region</label>
-                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_region || '-'}</p>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.hq_address_region || (selectedRecord.hq_address_line_1 ? '-' : <span className="text-gray-500 dark:text-gray-400 italic">Same as Legal</span>)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Country Row */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Country</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_country || '-'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Country</label>
-                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_country || '-'}</p>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.hq_address_country || (selectedRecord.hq_address_line_1 ? '-' : <span className="text-gray-500 dark:text-gray-400 italic">Same as Legal</span>)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Postal Code Row */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Postal Code</label>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.legal_address_postal_code || '-'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Postal Code</label>
-                      <p className="text-sm text-gray-900 dark:text-white mt-1">{selectedRecord.hq_address_postal_code || '-'}</p>
+                      <p className="text-sm text-gray-900 dark:text-white mt-1">
+                        {selectedRecord.hq_address_postal_code || (selectedRecord.hq_address_line_1 ? '-' : <span className="text-gray-500 dark:text-gray-400 italic">Same as Legal</span>)}
+                      </p>
                     </div>
                   </div>
-                </section>
-              )}
+                </div>
+              </section>
 
               {/* Registration Information */}
               <section className="bg-white dark:bg-gray-900 p-6 pb-0">
